@@ -69,6 +69,7 @@ Each entry is a choice CE1 made where the specification left room, dated, with i
 
 | 2026-10-18 | `PublicRouteNameSchema`, `publicRouteNamed` | Short names for the three routes (`read-record`, `submit-command`, `read-operation`), moved here from `packages/test-doubles` in CE5 | The stub functions and the event builder both need them; one definition (datum 0.7) |
 | 2026-10-18 | `httpHeaders.stubEcho` | `Demo-Stub-Echo`, a response header sent only by the stub functions in the stub stage | Named by Spec 00 CE5; every header name lives here |
+| 2026-10-18 | `operationDetailField` | Exported: the detail field each operation state carries, the rule `OperationStatusSchema` already applied | Spec 03 WE1: the journal sets and clears details by the same rule, not a copy (datum 0.7) |
 
 ## Open questions for the author
 

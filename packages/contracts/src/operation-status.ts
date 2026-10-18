@@ -47,6 +47,14 @@ const detailFieldForState: Partial<Record<OperationState, 'result' | 'conflict' 
   DEAD_LETTERED: 'failure',
 };
 
+// Exported so the journal (Spec 03 §4.3) sets and clears details by the same
+// rule the status schema checks them by.
+export function operationDetailField(
+  state: OperationState,
+): 'result' | 'conflict' | 'failure' | undefined {
+  return detailFieldForState[state];
+}
+
 export const OperationStatusSchema = z
   .strictObject({
     operationId: OperationIdentifierSchema,

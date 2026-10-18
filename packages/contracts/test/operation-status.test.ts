@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { OperationStateSchema, OperationStatusSchema, operationStateKind } from '../src/index';
+import {
+  OperationStateSchema,
+  OperationStatusSchema,
+  operationDetailField,
+  operationStateKind,
+} from '../src/index';
 import {
   syntheticProviderVersion,
   syntheticRecordIdentifier,
@@ -104,5 +109,23 @@ describe('OperationStatus', () => {
     ['an unknown key', { ...acceptedOperation, payload: {} }],
   ])('refuses %s', (_caseName, candidate) => {
     expect(OperationStatusSchema.safeParse(candidate).success).toBe(false);
+  });
+});
+
+describe('operationDetailField (Spec 03 §4.3)', () => {
+  it('names the one detail each state carries, as the status schema checks', () => {
+    expect(
+      Object.fromEntries(
+        OperationStateSchema.options.map((state) => [state, operationDetailField(state) ?? null]),
+      ),
+    ).toEqual({
+      ACCEPTED: null,
+      QUEUED: null,
+      APPLYING: null,
+      SUCCEEDED: 'result',
+      CONFLICT: 'conflict',
+      FAILED: 'failure',
+      DEAD_LETTERED: 'failure',
+    });
   });
 });
