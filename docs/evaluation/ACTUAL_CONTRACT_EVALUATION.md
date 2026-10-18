@@ -1663,3 +1663,89 @@ Each planted file was restored byte for byte.
 | Tests skipped | none |
 
 Done when: the suite passes. It does on the agent's machine; complete once WQ6 is answered and the author reproduces it.
+
+### Answer, 18 October 2026
+
+WQ6, in the author's words: "Accept WQ6 as built." Batch size 10, 3 retries, a maximum record age of 1 hour, `TRIM_HORIZON`, and `relay-failures` kept 14 days. WE3 now awaits the author's reproduction only.
+
+## WE4 Write adapters
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction. One question for WE5 is raised below (WQ7).
+
+### Assumptions verified
+
+- Spec 00 CU7: an aborted `fetch` rejects, while connecting or while the body arrives; both are mapped here, and run in the tests below.
+- WQ3: answered; 401, 428 and any other status §6.5 does not list map to `retryable`.
+- Read for this phase: the provider simulation's write path (`packages/test-doubles/src/provider-simulation.ts`): 412 for a stale `If-Match`, 428 without one, 400 for a malformed one or an invalid payload, 404 for a record or section not held, 422 for a reused key, 429 with `Retry-After: 2` once per key for `throttle-`, 503 for the first two attempts per key for `flaky-`, 500 for `poison-`, 412 for `conflict-`, and 200 or 201 with `ETag` and `Demo-Provider-Contract` on success. A 412 carries no `ETag`, so a conflict from the doubles has no `currentVersion`.
+
+### Spec 00 change: the provider transport
+
+`packages/construct-contracts/src/runtime/provider-transport.ts`, on the runtime subpath: `readResponseBodyWithinBound` and `discardResponseBody` (datum 0.10), `createCachedApiKeyReader` (Spec 00 §2.3) and `parseProviderEndpoint` (§2.3, CQ6). The read adapter (RE2) holds private copies of the same four pieces, and Spec 03 may not import Spec 02, so the shared form lives with Spec 00, which owns the rules. Its tests (`provider-transport.test.ts`) failed with `readResponseBodyWithinBound is not a function` before it existed. Switching the read adapter to it is Spec 02's to do (Findings).
+
+### Work completed
+
+- `adapters/http-write-adapter.ts`: `createHttpWriteAdapter`.
+  - A replace is `PUT /records/{recordId}/sections/{section}` and an append `POST /records/{recordId}/sections/notes/entries`, each with the §4.4 body, `If-Match` (the quoted `baseVersion`), `Idempotency-Key`, `X-Api-Key`, `Demo-Tenant-Id` (CQ7.1, which §6.5's list predates) and `X-Correlation-Id`.
+  - 200 or 201 is `applied` only after the contract version, the `ETag`, the bounded body and its `recordId` and `section` all check; any failure is `retryable` with its reason category.
+  - 409 and 412 are `conflict`, with `currentVersion` from a valid `ETag`. 400, 404 and 422 are `rejected`, with codes `provider-request-invalid`, `provider-not-held` and `provider-idempotency-key-reused`.
+  - 429, 503 and other 5xx are `retryable` with a valid `Retry-After`; one beyond the bound or malformed is ignored and counted. 401, 428 and any other status are `retryable` (WQ3). A failed key read is `retryable` as `api-key-unavailable`, and sends nothing. A network failure is `transport`, and an abort is `aborted`.
+  - The adapter never throws: the worker acts on outcomes alone.
+- `adapters/provider-a-write-adapter.ts`, `-b-`, `-c-`: each names only its provider, base URL variable and secret. `adapters/write-adapters.ts` builds all three from the environment, in routing table order.
+- One metric beyond §11: `ProviderRetryAfterIgnored`, by `providerId`, through `WriteAdapterMetrics`. §11 counts outcomes by reason at the worker, but an ignored header leaves no outcome reason, and WE4 requires it counted.
+
+### Tests first
+
+`http-write-adapter.test.ts` and `provider-write-adapters.test.ts` failed with `Cannot find module` before their source existed. The rows run against the msw doubles where a double gives the answer (every fault prefix the doubles define for writes, stale versions, records and sections not held, invalid payloads, reused keys and a wrong key), and against a stub transport for 409, 428, 418, 204, 302, an out of bound `Retry-After`, a network failure, aborts, and each untrusted 2xx.
+
+The `api-key-unavailable` reason was written into the adapter before its test. Its test was then added, and the plant that folds it back into `transport` fails it.
+
+| Planted regression | Result |
+|---|---|
+| `If-Match` unquoted | 8 tests failed |
+| `Idempotency-Key` not sent | 8 failed |
+| the tenant not sent | 10 failed |
+| the correlation identifier not sent | 1 failed |
+| an append to the wrong path | 1 failed |
+| 409 not a conflict | 3 failed |
+| 404 not rejected | 1 failed |
+| 422 not rejected | 1 failed |
+| 401 rejected rather than kept | 1 failed |
+| an ignored `Retry-After` not counted | 1 failed |
+| `Retry-After` in seconds, not milliseconds | 1 failed |
+| the contract version unchecked | 2 failed |
+| the streamed bound doubled | 1 failed, once a test was added: the contract's body parser bounds the text again, so the outcome alone could not show it; the new test counts the bytes the adapter pulls from a body ten times the bound |
+| an answer about another record trusted | 1 failed |
+| an abort thrown rather than retryable | 1 failed |
+| a key read failure folded into `transport` | 1 failed |
+| a failed key read kept | 1 failed |
+| a declared length over the bound not checked | 1 failed |
+| any http endpoint allowed | 2 failed |
+
+Each planted file was restored byte for byte.
+
+### Decision needed from the author
+
+- **WQ7** Which `Idempotency-Key` the worker sends a provider. Blocks WE5.
+    - Why open: §6.3 step 5 sets it to `operationId`, a ULID of 26 characters. The provider wire, frozen with the contract at 1.0.0, holds `Idempotency-Key` to the §3.3 grammar, a version 4 UUID, and the doubles answer anything else 400. Followed as written, every command would end `FAILED` as `provider-request-invalid`. WE4's adapter sends whatever key it is given, so the choice is the worker's.
+    - Options: (a) send the client's own `Idempotency-Key`, which the operation already stores, a version 4 UUID; (b) raise the contract to 1.1.0 so a provider also accepts a ULID; (c) derive a UUID shaped key from `operationId`.
+    - Trade offs: (a) changes no contract. Providers key by tenant and key (CQ7.4), and intake allows one operation per tenant and key, so the client's key names exactly one operation, as `operationId` does, and stays the same across retries and redrives. It departs from §6.3's wording, to be recorded as a deviation. (b) keeps §6.3's wording, but reopens the frozen contract and changes the doubles and every provider's grammar. (c) keeps both documents, but adds a mapping whose only purpose is to hide the difference.
+    - Recommendation: (a).
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 61 files, 1,161 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the suite passes. It does on the agent's machine; complete once the author reproduces it.
+
+### Findings
+
+| For | Finding | Likely fix |
+|---|---|---|
+| Spec 02 RE2 | `http-read-adapter.ts` holds private copies of the bounded body read, body discard, cached key reader and endpoint schema that `@demo/construct-contracts/runtime` now provides | import them from the runtime subpath; RE2's suite is the test |
+| Spec 03 §11 | `ProviderRetryAfterIgnored` is a metric §11 does not list | add it to §11's table at the next revision |

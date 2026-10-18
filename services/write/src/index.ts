@@ -1,5 +1,10 @@
 // Spec 03 write path. The Lambda entry points are deliberately not exported:
 // each reads its environment when loaded, and only its bundle loads it.
+export * from './adapters/http-write-adapter';
+export * from './adapters/provider-a-write-adapter';
+export * from './adapters/provider-b-write-adapter';
+export * from './adapters/provider-c-write-adapter';
+export * from './adapters/write-adapters';
 export * from './command-journal-construct';
 export * from './command-queue';
 export * from './command-relay-construct';

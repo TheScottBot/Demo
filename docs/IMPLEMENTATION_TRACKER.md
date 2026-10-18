@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-WE3 is built, with five stream mapping values awaiting the author (WQ6). WE1 and WE2 await reproduction. WE4 to WE7 are ready. The contract is frozen at `@demo/contracts` 1.0.0 (CD1). Spec 02 is built as far as it goes (RE1 to RE6 await reproduction). The Spec 01 Plan stage has not started.
+WE1 to WE4 are built and await reproduction. WE5 (the worker) waits on WQ7, which `Idempotency-Key` it sends a provider; WE6 and WE7 are ready. The contract is frozen at `@demo/contracts` 1.0.0 (CD1). Spec 02 is built as far as it goes (RE1 to RE6 await reproduction). The Spec 01 Plan stage has not started.
 
 ## Anonymity
 
@@ -43,7 +43,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
 | Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `services/write`, `infra` |
-| Suite | 58 files, 1,114 tests, and all seven tree checks passing on 18 October 2026 |
+| Suite | 61 files, 1,161 tests, and all seven tree checks passing on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
@@ -88,9 +88,9 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Plan stage | complete | | closed 18 October 2026; deviation entries 9 (WD1) and 10 (WQ2) |
 | WE1 State machine and journal store | awaiting reproduction | CE1, CE2, CE5 | `services/write`: the pure state machine, the journal store, the `CommandJournal` table construct, and a fake table for later phases |
 | WE2 Intake | awaiting reproduction | CE1, CE2, CE5 | `intake-handler.ts`, `request-hash.ts` (pure), `operation-status-mapping.ts`; meets CD1's condition for the freeze |
-| WE3 Relay and sweep | awaiting author gate | CE1, CE2, CE5 | `enqueue-operation.ts`, the relay and sweep handlers and entries, `message-group.ts` (pure), the `CommandRelay` construct; awaiting WQ6, then reproduction |
-| WE4 Write adapters | not started | CE1, CE2, CE5 | |
-| WE5 Worker | not started | CE1, CE2, CE5 | carries entry 9's covering tests |
+| WE3 Relay and sweep | awaiting reproduction | CE1, CE2, CE5 | `enqueue-operation.ts`, the relay and sweep handlers and entries, `message-group.ts` (pure), the `CommandRelay` construct |
+| WE4 Write adapters | awaiting reproduction | CE1, CE2, CE5 | `HttpWriteAdapter`, the three provider adapters, and a Spec 00 runtime transport module shared with the read path |
+| WE5 Worker | blocked | CE1, CE2, CE5, WQ7 | carries entry 9's covering tests; WQ7 decides the provider `Idempotency-Key` |
 | WE6 Status handler | not started | CE1, CE2, CE5 | WD4 sets its scope |
 | WE7 Operator tooling | not started | CE1, CE2, CE5 | |
 | WE8 WritePath construct | not started | WE1 to WE7 | |
@@ -132,11 +132,12 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | WQ3 Provider answers §6.5 does not map (401, 428, others) | answered | `retryable`, with a reason category each |
 | WQ4 Bounding a base64 encoded command body | answered | encoded length bounded before decoding, decoded bytes after |
 | WQ5 WU author values | answered | Appendix A as written; jitter subtracts; WU20 synth constants |
-| WQ6 Relay stream mapping values | open | WE3's completion: batch size, retries, record age, starting position, failure queue retention |
+| WQ6 Relay stream mapping values | answered | as built: batch size 10, 3 retries, 1 hour record age, `TRIM_HORIZON`, failure queue kept 14 days |
+| WQ7 Provider `Idempotency-Key` from the worker | open | WE5: `operationId` is a ULID, and the frozen provider wire takes a version 4 UUID |
 
 ## Open items for the author
 
-- Reproduce CE1 to CE5, RE1 to RE6 and WE1 to WE3 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5, RE1 to RE6 and WE1 to WE4 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
 - Install Node.js 24.22.0 locally (CQ5).
 
@@ -154,3 +155,4 @@ Each is set out with its evidence and likely fix in the evaluation record.
 | Spec 02 | a timed out fetch rejects with `TimeoutError`; adapters must send `Demo-Tenant-Id` (CQ7.1); the four pure files need listing in the tree checks at RE1 (the earlier `max-age` finding is withdrawn) |
 | Spec 03 | no fault prefix makes a write time out; a timed out fetch rejects with `TimeoutError`; WE5 must add a store update for `lastErrorReason` outside a transition; WE6 records the status route scope (WD4) |
 | Spec 00 CE5 | `demo-nodejs-function.test.ts` failed once on the first run after a clean install, then passed three times (WE1 record) |
+| Spec 02 RE2 | `http-read-adapter.ts` keeps private copies of the transport pieces `@demo/construct-contracts/runtime` now shares (WE4 record) |

@@ -14,7 +14,7 @@ export const writePathSettings = {
   sweepBatchLimit: 100,
   sweepTimeLimitMilliseconds: 50_000,
   // The relay's stream mapping (§5.1, WU7). Spec 03 names no values; these
-  // are the agent's, awaiting the author's decision (WQ6, WE3 record).
+  // were proposed in WE3 and adopted by the author on 18 October 2026 (WQ6).
   relayBatchSize: 10,
   relayRetryAttempts: 3,
   // single-definition: an hour of stream record age, not the Retry-After bound.
