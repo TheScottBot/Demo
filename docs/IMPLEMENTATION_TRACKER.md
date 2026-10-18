@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-Spec 02 is built as far as it goes: RE1 to RE6 await reproduction, and RE7 is unscheduled under RD1. Spec 00 is built up to CE6, which waits for WE8 and EE3. CD1 freezes the contract once RE4 and WE2 pass against the doubles: RE4 has, so the Spec 03 Plan stage (then WE2) is the path to the freeze. The Spec 01 Plan stage has not started either.
+WE1 is built and awaits reproduction. WE2 (intake) is next in Spec 03: CD1 freezes the contract once it passes against the doubles. WE4, WE6 and WE7 are also ready. Spec 02 is built as far as it goes (RE1 to RE6 await reproduction). The Spec 01 Plan stage has not started.
 
 ## Anonymity
 
@@ -42,8 +42,8 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Target runtime | Node.js 24, Lambda `nodejs24.x` on arm64 (CQ1) |
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
-| Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `infra` |
-| Suite | 46 files, 1,005 tests, and all seven tree checks passing on 18 October 2026 |
+| Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `services/write`, `infra` |
+| Suite | 49 files, 1,035 tests, and all seven tree checks passing on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
@@ -85,16 +85,16 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 | Phase | Status | Depends on | Note |
 |---|---|---|---|
-| Plan stage | not started | | |
-| WE1 State machine and journal store | not started | CE1, CE2, CE5 | |
+| Plan stage | complete | | closed 18 October 2026; deviation entries 9 (WD1) and 10 (WQ2) |
+| WE1 State machine and journal store | awaiting reproduction | CE1, CE2, CE5 | `services/write`: the pure state machine, the journal store, the `CommandJournal` table construct, and a fake table for later phases |
 | WE2 Intake | not started | CE1, CE2, CE5 | CD1 freezes the contract after RE4 and WE2 |
-| WE3 Relay and sweep | blocked | WD1 | |
+| WE3 Relay and sweep | not started | CE1, CE2, CE5 | `relay-failures` is a standard queue (WU7) |
 | WE4 Write adapters | not started | CE1, CE2, CE5 | |
-| WE5 Worker | blocked | WD1 | |
+| WE5 Worker | not started | CE1, CE2, CE5 | carries entry 9's covering tests |
 | WE6 Status handler | not started | CE1, CE2, CE5 | WD4 sets its scope |
 | WE7 Operator tooling | not started | CE1, CE2, CE5 | |
 | WE8 WritePath construct | not started | WE1 to WE7 | |
-| WE9 Deployed checks against the mock providers | blocked | CE4, CE6 | local replacement under CQ6 |
+| WE9 Deployed checks against the mock providers | not started | WE1 to WE7, CE4 | under WQ1, an automated local suite with an in-memory journal, stream and queue; resolving the `poison-` operation needs a deployed stage, raised again at WE7 |
 
 ## Decisions
 
@@ -123,14 +123,19 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | RQ2 RU15 latency gate under CQ6 | answered | set aside; deviation entry 7 |
 | RQ3 RU author values | answered | Appendix A as written, RU12 100 |
 | RQ4 ETags when a provider answers not-found | answered | option (b): not-found counts as complete; a 304 needs the same providers as the client's ETag; deviation entry 8 |
-| WD1 Applying commands after a provider outage | open | WE3, WE5 |
-| WD2 Canonical form for `requestHash` | open | Spec 03 intake |
-| WD3 Retention | open | Spec 03 |
-| WD4 Scope for the status route | open | WE6 |
+| WD1 Applying commands after a provider outage | answered | keep the queue; deviation entry 9 |
+| WD2 Canonical form for `requestHash` | answered | a pure function, `request-hash.ts` |
+| WD3 Retention | answered | operations 30 days, idempotency entries 7 days; `PRIVACY.md` to state them |
+| WD4 Scope for the status route | answered | `records:write` |
+| WQ1 WE9 under CQ6 | answered | an automated local suite; no longer an author gate |
+| WQ2 AWS behaviours nothing local shows (WU1, WU16, WU18) | answered | unverified, each outcome safe; deviation entry 10 |
+| WQ3 Provider answers §6.5 does not map (401, 428, others) | answered | `retryable`, with a reason category each |
+| WQ4 Bounding a base64 encoded command body | answered | encoded length bounded before decoding, decoded bytes after |
+| WQ5 WU author values | answered | Appendix A as written; jitter subtracts; WU20 synth constants |
 
 ## Open items for the author
 
-- Reproduce CE1 to CE5 and RE1 to RE6 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5, RE1 to RE6 and WE1 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
 - Install Node.js 24.22.0 locally (CQ5).
 
@@ -146,4 +151,5 @@ Each is set out with its evidence and likely fix in the evaluation record.
 | Spec 00 §2.5 | `README.md`, `CHANGELOG.md`, `SECURITY.md` and `PRIVACY.md` have no owning phase |
 | Spec 01 | per route throttling needs L1 `CfnStage.routeSettings`; the exposed CORS headers cannot be derived from header direction alone; the audience check for Cognito tokens |
 | Spec 02 | a timed out fetch rejects with `TimeoutError`; adapters must send `Demo-Tenant-Id` (CQ7.1); the four pure files need listing in the tree checks at RE1 (the earlier `max-age` finding is withdrawn) |
-| Spec 03 | no fault prefix makes a write time out; a timed out fetch rejects with `TimeoutError` |
+| Spec 03 | no fault prefix makes a write time out; a timed out fetch rejects with `TimeoutError`; WE5 must add a store update for `lastErrorReason` outside a transition; WE6 records the status route scope (WD4) |
+| Spec 00 CE5 | `demo-nodejs-function.test.ts` failed once on the first run after a clean install, then passed three times (WE1 record) |

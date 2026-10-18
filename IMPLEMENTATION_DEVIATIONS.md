@@ -68,6 +68,22 @@ Each entry is history once its decision is given; a later change to it is a date
 - **Author's decision:** RQ4, 18 October 2026: option (b), with the safeguard.
 - **Covering test:** `services/read/test/read-handler.test.ts`, the RQ4 rows (RE4).
 
+## 9. Accepted commands are applied after a provider outage
+
+- **Rule:** datum 0.17 item 10: never queue an event across a disconnection and replay it later.
+- **Done instead:** a command accepted while its provider is down waits in the journal and the `commands` queue, and is applied when the provider answers again. Every attempt carries the same `Idempotency-Key` and the command's `If-Match`, so a command applied against a record that has since changed ends `CONFLICT` rather than overwriting it, and a repeat never applies twice. A command redriven after the provider's own replay window, whose first attempt did apply, ends `CONFLICT` too: it is never applied twice, but the state can report `CONFLICT` for a command that went through.
+- **Why:** durable acceptance is the property the write path exists for (Spec 03 §2): a 202 means the command is kept.
+- **Author's decision:** WD1, 18 October 2026: keep the design and record the deviation (Spec 03 §12's recommendation).
+- **Covering test:** WE5: a command applied after its record changed ends `CONFLICT` with `attempts` of 1; five commands for one record apply in submission order.
+
+## 10. Three AWS behaviours on the write path are unverified
+
+- **Rule:** datum Stage one: a question a real experiment can answer is answered by running it; Spec 03 WU1 and WU18 name experiments.
+- **Done instead:** not observed: how an HTTP API presents a request body (WU1); whether a visibility the worker sets survives Lambda handling the reported failure (WU16); what a function timeout on the last receive leaves (WU18). Each outcome is built to be safe: intake reads a plain or a base64 encoded body, bounding either before decoding (WQ4); if Lambda resets the visibility, a retry waits the queue's 120 s visibility timeout instead of its backoff; the operator actions accept an operation left `APPLYING`.
+- **Why:** each needs a deployed stack, and nothing is deployed (entry 3).
+- **Author's decision:** WQ2, 18 October 2026: option (a), record them as unverified.
+- **Covering test:** WE2 (both body forms, each bound), WE5 (backoff set through the queue), WE7 (an `APPLYING` operation redriven and discarded).
+
 ## Not deviations
 
 Recorded so they are not mistaken for one.
@@ -77,4 +93,4 @@ Recorded so they are not mistaken for one.
 
 ## Pending
 
-Spec 00 §2.5 names two further entries, each to be written only if its decision accepts the departure: Spec 01 ED3 (the gateway's 401 body) and Spec 03 WD1 (applying commands after a provider outage).
+Spec 00 §2.5 names one further entry, to be written only if its decision accepts the departure: Spec 01 ED3 (the gateway's 401 body). Spec 03 WD1 became entry 9.
