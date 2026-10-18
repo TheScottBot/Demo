@@ -581,6 +581,88 @@ Done when: the suite passes. It does on the agent's machine; the phase is comple
 | Spec 00 CE3, `IMPLEMENTATION_DEVIATIONS.md` | `tsconfig.json` now sets `skipLibCheck: true`. msw 3.0.3's declarations (via `@mswjs/interceptors`) name DOM types such as `RequestInfo`, `BodyInit` and `MessageEvent`, which a Node only `lib` does not define. The alternative, adding the `DOM` lib, would let browser globals typecheck in Lambda code. Our own sources are still checked in full: a planted type error still fails | 20 TS errors, all inside `node_modules/@mswjs/interceptors` | record as a deviation from datum 0.10's strictest setting, with this reason and the planted error as its covering test |
 | Specs 02, 03 | The provider double is ready: `startProviderDoubles()` in `beforeAll`, `reset()` in `afterEach`, `stop()` in `afterAll`; connections in `syntheticProviderConnections` | `msw-provider-doubles.test.ts` | use it; do not build another |
 
+## CE5 Construct contracts and stubs
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Scope as built
+
+CE5's Work names `infra/bin/app.ts` wiring `DemoApi`, the stubs and the alarm topic. `DemoApi` is Spec 01 EE1, and EE1 depends on CE5 (§5.5), so it cannot exist yet. CE5 therefore wires the alarm topic and the stubs for every stage; wiring `DemoApi` is a Spec 00 change to make once EE1 is done, and is tracked in `docs/IMPLEMENTATION_TRACKER.md`. None of CE5's own tests depend on `DemoApi`.
+
+Until CE6, every stage holds the stubs, since no real `ReadPath` or `WritePath` exists to assign to `dev`, `test` or `demo`.
+
+### Assumptions verified
+
+- CU1: `lambda.Runtime.NODEJS_24_X` (CQ1) and `Architecture.ARM_64` synthesise as `nodejs24.x` and `arm64` (synth assertions).
+- CU2: `NodejsFunction`, its `bundling` options, `OutputFormat.ESM` and `banner` work as read in the Plan stage; `cdk synth` succeeds for every stage.
+- Read from the `aws-cdk-lib` 2.273.0 source this phase: `NodejsFunction` with `sourceMap: true` writes the map but sets no `NODE_OPTIONS`, so Node.js would ignore it in stack traces. `node --help` on v22.23.2 lists `--enable-source-maps`. The stubs set `NODE_OPTIONS=--enable-source-maps`.
+- A synthesised bundle was loaded in Node.js and invoked with a payload format 2.0 event, as Lambda would: it answered 501 with the problem document, `Cache-Control: no-store`, the `Demo-Stub-Echo` header and the correlation identifier, and logged one structured line carrying `correlationId`, `tenantId`, `service`, `component` and no `sub`. With `DEMO_STAGE` absent it failed at import with a `ZodError`, as §2.3 requires of a cold start.
+
+### Work completed
+
+- `packages/construct-contracts`: the §3.11 interfaces exactly as written; `demoResourceName` (refusing a name over 64 characters at synth), `demoStackName`, `providerSecretName`, `demoMetricsNamespace`; the CQ3 interfaces satisfied with Powertools (`createPowertoolsProblemHandling`); the stub handler and its bundled entry point; `StubReadPath` and `StubWritePath`.
+- `infra`: `lib/demo-platform.ts` building one stack per stage, `bin/app.ts`, `cdk.json` (running the app through `tsx`).
+- Contract additions recorded in `CONTRACT.md`: route names moved into `packages/contracts`, and the `Demo-Stub-Echo` header name.
+
+### Tests first
+
+All four new test files failed before their source existed (`Cannot find module`); the contract test for the route names and the echo header failed on its assertions. One test of this phase was wrong when first run: it assumed CDK sets `NODE_OPTIONS`, which the source shows it does not; the construct was changed to set it, not the test.
+
+| Planted regression | Result |
+|---|---|
+| echo header sent in every stage | 9 tests failed |
+| stubs on Node.js 22 | 4 failed |
+| resource names allowed one character longer | 1 failed |
+| `RequestRejected` dimension misnamed | 1 failed |
+| stub answering 500 | 12 failed |
+| alarm topic misnamed | 4 failed |
+
+### Dependency records
+
+Added this phase, read from the registry on 18 October 2026; the CDK and Powertools entries are those of the Plan stage table.
+
+| Package | Version | Licence | Why | Notes |
+|---|---|---|---|---|
+| `aws-cdk-lib`, `constructs` | 2.273.0, 10.8.1 | Apache-2.0 | infrastructure (§2.1) | build time only |
+| `aws-cdk` | 2.1145.0 | Apache-2.0 | `cdk synth` (§2.4 check 7) | build time only |
+| `esbuild` | 0.28.2 | MIT | local bundling without Docker | build time only |
+| `tsx` | 4.23.15 | MIT | runs the TypeScript CDK app for `cdk synth`; Node.js 22's type stripping cannot resolve the extensionless imports the workspaces use | build time only; replaceable by a bundling step |
+| `@aws-lambda-powertools/logger`, `/metrics`, `/tracer` | 2.36.0 | MIT-0 | §5.1 | bundled into every Lambda |
+
+### Reproduction report
+
+Commands, from the repository root:
+
+```bash
+npm ci
+npm run typecheck
+npm run lint
+npm run format:check
+npm test
+npm run synth --workspace infra
+```
+
+| Check | Result |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 (target Node.js 24; CQ5 not yet done) |
+| Typecheck, lint, format | exit 0, 0 warnings, all formatted |
+| Full suite | 24 files, 595 tests passed |
+| `cdk synth` | all four stacks synthesised to `infra/cdk.out` |
+| Tests skipped | none |
+| Tests requiring the author | none |
+
+Done when: `cdk synth` succeeds for every stage. It does on the agent's machine; complete once the author reproduces it.
+
+### Findings
+
+| For | Finding | Likely fix |
+|---|---|---|
+| Spec 00 | `DemoApi` cannot be wired in CE5 as drafted (circular with EE1) | a Spec 00 change after EE1, wiring it in every stage |
+| Specs 02, 03 | their `NodejsFunction`s need the same runtime, architecture, ESM banner and `NODE_OPTIONS` as the stubs | a shared props helper in `packages/construct-contracts` as a Spec 00 change, so the settings live in one place |
+| Specs 02, 03 | `createPowertoolsProblemHandling` satisfies the CQ3 interfaces with Powertools | use it rather than writing another |
+| Spec 00 CE4 | the stacks carry no provider connections yet | CE4 supplies them |
+| Spec 00 | Powertools reported `cold_start: false` on the first local invocation of the bundle; it reads the Lambda environment to decide, which a local run lacks | observation only; recheck if a local cold start check is ever needed |
+
 # Spec 01 entry point
 
 Plan stage not started.

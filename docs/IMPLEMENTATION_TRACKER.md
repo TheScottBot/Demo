@@ -4,6 +4,10 @@ Where the demo platform stands, phase by phase. This file states the present and
 
 Last updated: 18 October 2026.
 
+## Next up
+
+With CE1, CE2 and CE5 built, every stream can start once the author has reproduced them: the Spec 01, 02 and 03 Plan stages, then EE1 to EE3, RE1 to RE5, and WE1, WE2, WE4, WE6 and WE7. CE3 and CE4 remain in Spec 00. The agent recommends CE3 next, so every later phase runs under the tree wide checks.
+
 ## Resuming work
 
 1. Read this file, then the open items below.
@@ -30,8 +34,8 @@ Last updated: 18 October 2026.
 | Target runtime | Node.js 24, Lambda `nodejs24.x` on arm64 (CQ1) |
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
-| Workspaces | `packages/contracts`, `packages/test-doubles` |
-| Suite | 19 files, 529 tests passing on 18 October 2026 |
+| Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `infra` |
+| Suite | 24 files, 595 tests passing, and `cdk synth` for all four stages, on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
@@ -42,7 +46,7 @@ Last updated: 18 October 2026.
 | CE2 Shared test doubles | awaiting reproduction | CE1 | `packages/test-doubles`: event builder, synthetic records, provider simulation, msw doubles |
 | CE3 Tree wide checks | not started | CE1 | the pure import check exists as an ESLint rule, proven on a planted violation; the other §2.4 checks and the CI jobs are still to build |
 | CE4 Mock providers | not started | CE1, CE2 | under CQ6, local Node.js servers wrapping `simulateProviderRequest`; deployment and seeding to AWS replaced |
-| CE5 Construct contracts and stubs | not started | CE1 | |
+| CE5 Construct contracts and stubs | awaiting reproduction | CE1 | `packages/construct-contracts` and `infra`: §3.11 interfaces, naming, stubs, Powertools adapter, one stack per stage; `DemoApi` wiring waits for EE1 (circular as drafted) |
 | CE6 Wiring real constructs | not started | RE5, WE8, EE3 | |
 
 ## Spec 01 entry point
@@ -112,7 +116,7 @@ Last updated: 18 October 2026.
 
 ## Open items for the author
 
-- Reproduce CE1 and CE2 on a clean machine with the commands in their reproduction reports.
+- Reproduce CE1, CE2 and CE5 on a clean machine with the commands in their reproduction reports.
 - Install Node.js 24.22.0 locally (CQ5).
 
 ## Findings awaiting their owners
@@ -123,6 +127,8 @@ Each is set out with its evidence and likely fix in the evaluation record.
 |---|---|
 | Spec 00 CE3 | the `LICENSE` text quotes defined terms, which the prose scan must allow |
 | Spec 00 CE3 | `skipLibCheck: true` is set because msw's declarations need DOM types; record it as a deviation |
+| Spec 00 | wire `DemoApi` into `infra/lib/demo-platform.ts` once EE1 is done |
+| Spec 00 | a shared `NodejsFunction` props helper, so Specs 02 and 03 reuse the runtime, banner and `NODE_OPTIONS` the stubs use |
 | Spec 00 §2.5 | `README.md`, `TESTING.md`, `CHANGELOG.md`, `SECURITY.md` and `PRIVACY.md` have no owning phase |
 | Spec 01 | per route throttling needs L1 `CfnStage.routeSettings`; the exposed CORS headers cannot be derived from header direction alone; the audience check for Cognito tokens |
 | Spec 02 | an over bound `max-age` is refused by the contract, not capped; a timed out fetch rejects with `TimeoutError` |

@@ -126,3 +126,26 @@ export const publicRoutes: readonly PublicRoute[] = [
     scopeRule: { kind: 'decided-by', decision: 'Spec 03 WD4' },
   },
 ];
+
+// Short names for the three routes, shared by the stub functions (CE5) and the
+// event builder (CE2) so neither keeps its own list.
+export const PublicRouteNameSchema = z.enum(['read-record', 'submit-command', 'read-operation']);
+
+export type PublicRouteName = z.infer<typeof PublicRouteNameSchema>;
+
+const handlerOwnersByRouteName: Record<PublicRouteName, PublicRoute['handlerOwner']> = {
+  'read-record': 'spec-02-read-handler',
+  'submit-command': 'spec-03-command-handler',
+  'read-operation': 'spec-03-status-handler',
+};
+
+export function publicRouteNamed(routeName: PublicRouteName): PublicRoute {
+  const publicRoute = publicRoutes.find(
+    (candidateRoute) => candidateRoute.handlerOwner === handlerOwnersByRouteName[routeName],
+  );
+  if (publicRoute === undefined) {
+    // Unreachable while publicRoutes holds all three; the route tests prove it.
+    throw new Error(`public-route-missing: ${routeName}`);
+  }
+  return publicRoute;
+}

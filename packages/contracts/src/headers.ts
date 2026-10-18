@@ -38,6 +38,9 @@ export const httpHeaders = {
     direction: 'response',
     boundary: 'provider',
   },
+  // Spec 00 CE5: sent by the stub functions in the stub stage only, so Spec 01
+  // EE4 can see which request headers reached a handler unchanged.
+  stubEcho: { wireName: 'Demo-Stub-Echo', direction: 'response', boundary: 'public-api' },
 } as const satisfies Record<string, HeaderDefinition>;
 
 export const headerValues = {

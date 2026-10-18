@@ -8,7 +8,8 @@
     "node": ">=24.21.0 <25"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "infra"
   ],
   "scripts": {
     "typecheck": "tsc --build",
@@ -20,9 +21,12 @@
     "@eslint/js": "10.0.1",
     "@fast-check/vitest": "0.5.0",
     "@types/node": "24.19.2",
+    "aws-cdk": "2.1145.0",
+    "esbuild": "0.28.2",
     "eslint": "10.13.0",
     "fast-check": "4.10.2",
     "prettier": "3.9.10",
+    "tsx": "4.23.15",
     "typescript": "5.9.3",
     "typescript-eslint": "8.71.2",
     "vitest": "5.0.5"

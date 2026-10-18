@@ -1,4 +1,4 @@
-import { publicRoutes, type PublicRoute } from '@demo/contracts';
+import type { PublicRoute } from '@demo/contracts';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, Context } from 'aws-lambda';
 
 // Spec 00 §4.3: the payload format 2.0 event builder Specs 02 and 03 use to
@@ -26,24 +26,6 @@ export interface VerifiedClaimsEventOptions {
   claims?: ClaimOptions;
   // Replaces the claims outright, for tests of missing or hostile claims.
   rawClaims?: JwtClaims;
-}
-
-export type PublicRouteName = 'read-record' | 'submit-command' | 'read-operation';
-
-const routeOwnersByName: Record<PublicRouteName, PublicRoute['handlerOwner']> = {
-  'read-record': 'spec-02-read-handler',
-  'submit-command': 'spec-03-command-handler',
-  'read-operation': 'spec-03-status-handler',
-};
-
-export function publicRouteNamed(routeName: PublicRouteName): PublicRoute {
-  const publicRoute = publicRoutes.find(
-    (candidateRoute) => candidateRoute.handlerOwner === routeOwnersByName[routeName],
-  );
-  if (publicRoute === undefined) {
-    throw new Error(`public-route-missing: ${routeName}`);
-  }
-  return publicRoute;
 }
 
 function claimsFrom(claimOptions: ClaimOptions = {}): JwtClaims {

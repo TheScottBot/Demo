@@ -1,0 +1,27 @@
+{
+  "name": "@demo/construct-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spec 00 construct contracts: the construct property interfaces, resource naming, and the stub constructs and stub functions.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --root ../.. packages/construct-contracts"
+  },
+  "dependencies": {
+    "@aws-lambda-powertools/logger": "2.36.0",
+    "@aws-lambda-powertools/metrics": "2.36.0",
+    "@aws-lambda-powertools/tracer": "2.36.0",
+    "@demo/contracts": "0.1.0",
+    "@types/aws-lambda": "8.10.164",
+    "aws-cdk-lib": "2.273.0",
+    "constructs": "10.8.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@demo/test-doubles": "0.1.0"
+  }
+}

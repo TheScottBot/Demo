@@ -6,3 +6,5 @@ export * from './provider-simulation-store';
 export * from './synthetic-records';
 export * from './verified-claims-event-builder';
 export * from './msw-provider-doubles';
+// Route names moved to the contract in CE5; re-exported so existing callers keep working.
+export { publicRouteNamed, type PublicRouteName } from '@demo/contracts';

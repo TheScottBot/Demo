@@ -1,0 +1,17 @@
+{
+  "name": "@demo/infra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The one CDK app: one stack per stage (Spec 00 §5.2).",
+  "license": "MIT",
+  "scripts": {
+    "synth": "cdk synth --all --quiet",
+    "test": "vitest run --root .. infra"
+  },
+  "dependencies": {
+    "@demo/construct-contracts": "0.1.0",
+    "aws-cdk-lib": "2.273.0",
+    "constructs": "10.8.1"
+  }
+}

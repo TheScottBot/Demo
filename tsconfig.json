@@ -16,5 +16,12 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["packages/*/src", "packages/*/test", "vitest.config.ts"]
+  "include": [
+    "packages/*/src",
+    "packages/*/test",
+    "infra/bin",
+    "infra/lib",
+    "infra/test",
+    "vitest.config.ts"
+  ]
 }
