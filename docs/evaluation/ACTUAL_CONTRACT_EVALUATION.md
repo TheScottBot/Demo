@@ -818,7 +818,83 @@ Done when: the local suite passes and the construct synthesises. Both hold on th
 
 # Spec 01 entry point
 
-Plan stage not started.
+Plan stage worked on 18 October 2026, after reading Spec 01 Draft 2 once, top to bottom, and rereading datum Part 0, 0.17 and Stage one. Status: evidence gathered; author decisions outstanding (Decisions still needing the author, at the end of this section).
+
+## Shared ground
+
+- Reference implementations: read in the Spec 00 Plan stage; nothing further applies to the entry point.
+- Environment: as the Spec 00 record states; local Node.js v22.23.2, target Node.js 24 (CQ1, CQ5), nothing deployed (CQ6).
+- Built and ready for this stream: `packages/contracts` 1.1.0 (frozen, CD1), with the routes, their scopes and every header name; the stub functions and the `stub` stage (CE5); `DemoApiProperties` and `DemoApiOutputs` (CE5); and the real `ReadPath` (RE5) and `WritePath` (WE8) constructs CE6 will hand to `DemoApi`.
+- Read in the Spec 00 Plan stage and recorded there: the CDK Lambda integration adds its own invoke permission, scoped to the route (EU4); per route throttling exists only on the L1 `CfnStage.routeSettings` (EU7); the integration timeout is documented as 30 seconds by API Gateway and 29 by the CDK (EU2); the authoriser checks `aud` when present and `client_id` only without it (CU4).
+- Packages read for this record, as installed: `aws-cdk-lib` 2.273.0 `aws-cognito` (`FeaturePlan` `LITE`, `ESSENTIALS`, `PLUS`; `LambdaVersion` `V1_0`, and `V2_0` and `V3_0` for pre token generation only; `UserPool.addTrigger` with a version) and `aws-apigatewayv2-authorizers` (`HttpJwtAuthorizer` with `jwtAudience` and `identitySource`).
+
+## EU values
+
+Basis: read, from the sources named, retrieved 18 October 2026, unless the row says otherwise. AWS pages are under `https://docs.aws.amazon.com/`. Nothing could be run against AWS (CQ6).
+
+| Identifier | Value assumed | Source | Conclusion |
+|---|---|---|---|
+| EU1 | a JWT authoriser with payload format 2.0 | `apigateway/latest/developerguide/http-api-jwt-authorizer.html`; `http-api-vs-rest.html` | holds: JWT authorisers are an HTTP API feature; validated claims reach a Lambda integration at `requestContext.authorizer.jwt.claims` |
+| EU2 | the integration timeout allows EU10 | Spec 00 Plan stage | holds: 6 and 10 seconds are below the CDK's 29 |
+| EU3 | no default route answers an unknown path 404 | `apigateway/latest/developerguide/http-api-develop-routes.html` | holds as read: with no matching route, API Gateway "returns `{"message":"Not Found"}`" to the client; the status is not stated beside it, and the experiment needs a deployed API |
+| EU4 | the integration grants invoke permission itself | Spec 00 Plan stage (CDK source) | holds |
+| EU5 | the 401 body, and whether it can be customised | `http-api-vs-rest.html`; `http-api-jwt-authorizer.html` | partly: custom gateway responses are a REST API feature and not an HTTP API one, so the 401 body cannot be customised; its exact body needs a deployed API. ED3 below |
+| EU6 | client credentials tokens can carry `tenant_id` | `cognito/latest/developerguide/user-pool-lambda-pre-token-generation.html`; `aws.amazon.com/cognito/pricing` | holds, with conditions. Only the `V3_0` trigger event customises machine to machine access tokens (trigger source `TokenGeneration_ClientCredentials`), and `V3_0` is only in the Essentials and Plus plans. Machine tokens are priced apart: $0.00225 per token request in US East, with no free tier; Essentials is $0.015 per MAU above 10,000. A client credentials grant has no user, so there is no user attribute to copy. The event carries `callerContext.clientId`, and client metadata only as the client sends it (`aws_client_metadata`). EQ3 below |
+| EU7 | rate and burst per route | `apigateway/latest/developerguide/http-api-throttling.html`; Spec 00 Plan stage | holds: route level throttling overrides the account's limits for a stage or route, through route settings; throttled requests may answer 429; throttles are targets, not ceilings |
+| EU8 | no usage plans or API keys | `http-api-vs-rest.html` | holds: API keys, per client rate limiting and per client usage throttling are REST API only. So is AWS WAF, which changes ED2's options |
+| EU9 | the access log variables | `apigateway/latest/developerguide/http-api-logging-variables.html` | holds: `$context.requestId`, `$context.routeKey`, `$context.status`, `$context.responseLatency`, `$context.integrationLatency`, `$context.integrationErrorMessage`, `$context.authorizer.error`, `$context.authorizer.claims.tenant_id`. The forbidden source IP is `$context.identity.sourceIp`, and is left out |
+| EU10 | integration timeouts 6 and 10 seconds | author decision | consistent: 6 is above RU11's 5 second read function; 10 is above WU20's 5 and 3 second intake and status functions (EQ4) |
+| EU11 | rate and burst per route | author decision | consistent, with the RU12 note in the Spec 02 record: 100 a second on the read route fits its reserved concurrency of 100, and a full 200 burst would meet Lambda's limit first (EQ4) |
+| EU12 | CORS maximum age 600 seconds; logs kept 14 days | author decision | consistent (EQ4) |
+| EU13 | alarm thresholds | author decision | consistent (EQ4) |
+
+## Design notes for the entry phases
+
+- EE1: `services/entry`, a new workspace whose only export is `DemoApi` (§3). It imports no Spec 02 or Spec 03 package; it receives their functions through `DemoApiProperties`.
+- EE2: the §4.2 synth guard is concrete under EU6: the pool must use the Essentials or Plus plan and the trigger `V3_0`, or synth fails.
+- EE3: §5.3's exposed headers are chosen by name from `httpHeaders`, since they are a subset of the response headers (the CE1 finding). Throttles go on the L1 stage's route settings (EU7).
+- EE3: the `ApiThrottled` metric filter matches `$context.status` 429 in the structured access log.
+
+## Decisions still needing the author
+
+Batched for the Spec 01 Plan stage exit (datum 0.3). ED1 to ED3 are stated in the five part form in Spec 01 §7; two of them change on the evidence above, so they are restated here with it.
+
+- **ED1** Identity provider. Blocks EE2.
+    - Why open: as §7 says; and EU6 now shows the demo pool needs the Essentials plan and the `V3_0` trigger, with machine tokens charged per request.
+    - Options: the demo user pool of §4.2, on the Essentials plan; an external issuer that already emits `tenant_id` and `scope`.
+    - Trade offs: under CQ6 nothing is deployed, so neither costs anything now. If deployed, the pool charges $0.00225 per client credentials token, with no free tier, and needs EQ3 settled; an external issuer costs nothing here but ties the demo to that issuer's claims.
+    - Recommendation: the demo user pool, as §7 recommends, synthesised on the Essentials plan with a `V3_0` trigger, and EQ3 (a).
+- **ED2** Per tenant fairness. Blocks EE3's scope.
+    - Why open: as §7 says; and EU8 shows AWS WAF cannot attach to an HTTP API, so §7's WAF option needs a CloudFront distribution in front, a further resource.
+    - Options: accept it, in the author's words in `SECURITY.md`; CloudFront with a WAF rate based rule in front; a Lambda authoriser with quotas.
+    - Trade offs: CloudFront adds a distribution and its cost; a Lambda authoriser adds latency and code to every request.
+    - Recommendation: accept it for the demo, as §7 recommends.
+- **ED3** The 401 body. Blocks EE4's 401 assertions.
+    - Why open: as §7 says; and EU5 shows HTTP APIs cannot customise gateway responses, so §7's second option does not exist.
+    - Options: accept it, as an `IMPLEMENTATION_DEVIATIONS.md` entry with a covering test asserting the status alone; a Lambda authoriser that answers with a problem document.
+    - Trade offs: a Lambda authoriser costs latency on every request, and is runtime code §1 otherwise forbids beyond the trigger.
+    - Recommendation: accept and record it, as §7 recommends.
+- **EQ1** How EE4 runs under CQ6. Blocks EE4.
+    - Why open: every EE4 check is the gateway's own behaviour (401s, preflight, the authoriser, throttling, headers passing unchanged), and nothing local can run API Gateway. The handlers' side is already tested: the stubs' 501 and echo (CE5), and each route's handler (RE6, WE9).
+    - Options: (a) EE4 set aside until a stage is deployed, recorded under deviation entry 3, with EE1 to EE3's synth assertions as the covering tests of the configuration; (b) an in-process model of the gateway that applies the synthesised routes, authoriser and CORS to requests, verifying tokens against a local key set; (c) hold EE4 open.
+    - Trade offs: (a) is honest about what is unverified and costs nothing. (b) would test our model of API Gateway, not API Gateway, and needs a JWT dependency for tests. (c) leaves a phase open with no way to close it.
+    - Recommendation: (a).
+- **EQ2** What becomes of EE5, the author smoke gate, under CQ6. Blocks EE5.
+    - Why open: EE5 is a manual read, command and status poll through the public API in a deployed `dev`, and there is none.
+    - Options: (a) a local smoke the author runs by hand, `npm run smoke:local`: the real read, intake and status handlers in one process against the local mock providers, printing each answer, recorded by the author in `TESTING.md`; (b) set aside until deployment, as a deviation.
+    - Trade offs: (a) gives the author something to run and watch, but passes through no gateway, and it is a manual check rather than a suite (Spec 00 §5.4, datum 0.17 item 18). (b) leaves EE5 with nothing to do until a deployment.
+    - Recommendation: (a), with EE5 then complete when the author records the run.
+- **EQ3** Where a client credentials token's `tenant_id` comes from. Blocks EE2.
+    - Why open: §4.2 copies a user's tenant attribute, but a client credentials grant has no user (EU6), and its only other input, client metadata, is set by the client.
+    - Options: (a) one app client per tenant, with the pure claim mapping taking the tenant from a table of client identifiers the construct builds, and refusing any client not in it; (b) take the tenant from `aws_client_metadata`; (c) drop client credentials, and have automated checks sign in as the synthetic users.
+    - Trade offs: (a) keeps the tenant out of the client's hands, at one app client per tenant (no charge per client). (b) lets any client claim any tenant, which defeats tenant isolation. (c) needs the synthetic users' passwords in automation.
+    - Recommendation: (a).
+- **EQ4** The EU author values: EU10 to EU13. Block EE1 and EE3.
+    - Why open: Appendix A gives each as an author decision.
+    - Options: Appendix A as written; other values.
+    - Trade offs: each is consistent with the limits read above and with the read and write functions' timeouts.
+    - Recommendation: Appendix A as written.
+
 
 # Spec 02 read path
 

@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-Spec 03 is built as far as it goes: WE1 to WE9 await reproduction. Spec 02 is too (RE1 to RE6). What remains is Spec 01, whose Plan stage has not started, and Spec 00 CE6, which waits on Spec 01 EE3. The contract is frozen at `@demo/contracts` 1.1.0.
+The Spec 01 Plan stage has its evidence: every EU value is read or set out, and ED1 to ED3 and EQ1 to EQ4 wait on the author. Once they are answered the stage closes and EE1 can start. Specs 02 and 03 are built as far as they go (RE1 to RE6 and WE1 to WE9 await reproduction). CE6 waits on EE3. The contract is frozen at `@demo/contracts` 1.1.0.
 
 ## Anonymity
 
@@ -61,7 +61,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 | Phase | Status | Depends on | Note |
 |---|---|---|---|
-| Plan stage | not started | | |
+| Plan stage | awaiting author gate | | evidence recorded 18 October 2026; closes once ED1 to ED3 and EQ1 to EQ4 are answered |
 | EE1 DemoApi against stubs | not started | CE5 | |
 | EE2 Identity provider | blocked | CE5, ED1 | |
 | EE3 Throttling, CORS, logs and alarms | not started | CE5 | ED2 sets its scope |
@@ -116,8 +116,12 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | CQ8 Check 6 as property runs | answered | accepted; `IMPLEMENTATION_DEVIATIONS.md` entry 1 |
 | CQ9 `DemoApi` wiring after EE1 | answered | accepted; `IMPLEMENTATION_DEVIATIONS.md` entry 5 |
 | ED1 Identity provider | open | EE2 |
-| ED2 Per tenant fairness | open | EE3's scope |
-| ED3 401 body | open | EE4's 401 assertions |
+| ED2 Per tenant fairness | open | EE3's scope; EU8 shows WAF cannot attach to an HTTP API |
+| ED3 401 body | open | EE4's 401 assertions; EU5 shows the body cannot be customised |
+| EQ1 EE4 under CQ6 | open | EE4 |
+| EQ2 EE5 under CQ6 | open | EE5 |
+| EQ3 The tenant of a client credentials token | open | EE2 |
+| EQ4 EU author values | open | EE1, EE3 |
 | RD1 Enable the read cache | answered | switch, synth guard and cold start log only; RE7 unscheduled |
 | RQ1 RE6 under CQ6 | answered | an automated suite against the local mock providers |
 | RQ2 RU15 latency gate under CQ6 | answered | set aside; deviation entry 7 |
