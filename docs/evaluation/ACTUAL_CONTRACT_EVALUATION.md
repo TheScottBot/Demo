@@ -1041,6 +1041,60 @@ Done when: the suite passes. It does on the agent's machine; complete once the a
 | Spec 00 CE2 | the msw interception escape above, in msw 3.0.3: a suite that both cancels mocked bodies and sends an unmatched request can have a later request escape | in the doubles, add a final catch all handler answering a network error for every request no provider handler matches, so nothing can pass through whatever msw's own strategy does; that changes what CE2's refusal test sees, so it is raised as a Spec 00 change rather than made here |
 | RE3 | the adapter throws only on abort, with the signal's reason; the fan-out maps exactly that to `timeout` | test with `abortSignal.aborted`, as the Plan stage noted |
 
+## RE3 Fan-out
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Assumptions verified
+
+- RU1, RU2: 1,500 ms and 2,500 ms, now in `read-path-settings.ts` with a test that also holds the provider timeout inside the budget.
+- RU3: `AbortSignal.any` combining a provider deadline, the budget and an optional parent signal; an abort reaches the adapter as its signal's reason.
+- Run in RE3: under vitest's fake timers, `AbortSignal.timeout(1000)` had not fired after the clock advanced 1,500 ms, while a `setTimeout` aborting an `AbortController` had, and `AbortSignal.any` followed it. The deadlines are therefore ordinary timers: the same behaviour in production, and drivable in tests.
+
+### Work completed
+
+`provider-fan-out.ts` (pure, on the list in `tree-checks/pure-modules.json`): `fanOutToProviders` calls every adapter at once, each with its own `If-None-Match` version and the correlation identifier, under a per provider deadline, the fan-out budget and an optional parent signal (for §4.3's second call within the remaining budget). It returns one `ProviderCallOutcome` per adapter, in the order given, with its latency. It never retries (§3.1).
+
+Two choices beyond the specification's text, both for §3's rule that one slow provider never blocks the others:
+
+- Each call is raced against its own signal, so an adapter that ignores its signal still yields `timeout` on time; whatever such a call settles to later is dropped rather than left as an unhandled rejection.
+- Every timer is cleared once the fan-out settles, so nothing wakes a frozen Lambda environment.
+
+The timing is validated synchronously, so a bad value throws at once rather than as a rejected read.
+
+### Tests first
+
+The test file failed with `Cannot find module` before the source existed; the RU1 and RU2 test failed on its assertion before the constants existed. Lint then refused a loop flag it took to be constant because it is set in a callback; the test reads it through a function now.
+
+| Planted regression | First result | After a new test |
+|---|---|---|
+| provider deadline set to the budget | 2 tests failed | |
+| budget not applied | 1 failed | |
+| call not raced against its signal | 1 failed | |
+| an abort rejection mapped to transport | not caught | caught (1 failed) |
+| timers left running | 1 failed | |
+| parent signal ignored | 1 failed | |
+
+The one not caught first exposed an untested path. The fan-out's own abort listener is registered before the adapter is called, so an abort during a call always wins the race, and the catch path's abort check is reached only when the signal has already fired before the call: then `fetch` rejects at once with the signal's reason, as the new test's adapter does. That path now reads as `timeout` under test.
+
+Pure import check: a `node:fs` import planted in `provider-fan-out.ts` failed check 2 and ESLint, and both passed once removed.
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 39 files, 925 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the suite passes, and the pure import check passes. Both hold on the agent's machine; complete once the author reproduces them.
+
+### Anonymity check, 18 October 2026
+
+At the author's instruction the family is an anonymous proof of concept: nothing may name the real organisation or its domain. Every file git would commit was searched for such terms; the only matches were the word "diagnostics" in `TESTING.md` (Node.js tooling) and a substring of a `package-lock.json` integrity hash. No change was needed.
+
 # Spec 03 write path
 
 Plan stage not started.

@@ -6,7 +6,11 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-Spec 00 is built up to CE6, which waits for the streams (RE5, WE8, EE3). RE1 and RE2 are built; RE3 (fan-out) is next in Spec 02. A question about ETags and `not-found` providers is noted for RE4 (the RE1 record). The Spec 01 and Spec 03 Plan stages have not started.
+Spec 00 is built up to CE6, which waits for the streams (RE5, WE8, EE3). RE1 to RE3 are built; RE4 (the read handler) is next in Spec 02, and opens with the ETag question noted in the RE1 record. A question about ETags and `not-found` providers is noted for RE4 (the RE1 record). The Spec 01 and Spec 03 Plan stages have not started.
+
+## Anonymity
+
+The family is an anonymous proof of concept (author, 18 October 2026): nothing in the repository may name the real organisation or its domain. Use the specifications' generic vocabulary: records, sections, providers, tenants. A search on 18 October 2026 found nothing to change.
 
 ## Resuming work
 
@@ -39,7 +43,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
 | Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `infra` |
-| Suite | 38 files, 913 tests, and all seven tree checks passing on 18 October 2026 |
+| Suite | 39 files, 925 tests, and all seven tree checks passing on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
@@ -71,7 +75,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Plan stage | complete | | closed 18 October 2026; RU8 and RU9 left for RE7 |
 | RE1 Aggregate ETag and merge | awaiting reproduction | CE1, CE2, CE5 | `services/read`: `aggregate-etag.ts`, `record-merge.ts`, both proven pure; ETag emission and 304 rules left to RE4 |
 | RE2 Read adapters | awaiting reproduction | CE1, CE2, CE5 | `services/read/src/adapters`: `HttpReadAdapter` and the three provider adapters, every §3.3 row tested |
-| RE3 Fan-out | not started | CE1, CE2, CE5 | |
+| RE3 Fan-out | awaiting reproduction | CE1, CE2, CE5 | `provider-fan-out.ts`, proven pure; per provider deadline, budget and parent signal; adapters that ignore abort still time out |
 | RE4 Read handler | not started | CE1, CE2, CE5 | CD1 freezes the contract after RE4 and WE2 |
 | RE5 ReadPath construct | not started | CE1, CE2, CE5 | |
 | RE6 Deployed checks against the mock providers | not started | RE4, CE4 | under RQ1, run locally against the local mock providers; no longer blocked on deployment |
@@ -125,7 +129,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 ## Open items for the author
 
-- Reproduce CE1 to CE5, RE1 and RE2 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5 and RE1 to RE3 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
 - Install Node.js 24.22.0 locally (CQ5).
 

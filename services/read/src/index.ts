@@ -7,3 +7,4 @@ export * from './adapters/read-adapters';
 export * from './aggregate-etag';
 export * from './read-path-settings';
 export * from './record-merge';
+export * from './provider-fan-out';
