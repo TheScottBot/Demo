@@ -18,6 +18,25 @@ export const mockProviderBehaviour = {
   seedTenants: ['tenant-1', 'tenant-2'],
 } as const;
 
+// The status each provider answer carries: §4.3 plus the CQ7 decisions of 18
+// October 2026. The adapters (Specs 02, 03) map from these, and the doubles
+// answer with them, so both read one table.
+export const providerWireStatuses = {
+  readOk: 200,
+  notModified: 304,
+  replaceApplied: 200,
+  appendApplied: 201,
+  requestInvalid: 400,
+  apiKeyRefused: 401,
+  notHeld: 404,
+  preconditionFailed: 412,
+  ifMatchRequired: 428,
+  idempotencyKeyReused: 422,
+  throttled: 429,
+  serverError: 500,
+  unavailable: 503,
+} as const;
+
 export type MockProviderFaultEffect =
   | 'delay-response'
   | 'service-unavailable'

@@ -1,0 +1,20 @@
+{
+  "name": "@demo/test-doubles",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spec 00 shared test doubles: msw provider doubles, synthetic fixtures and the payload format 2.0 event builder.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --root ../.. packages/test-doubles"
+  },
+  "dependencies": {
+    "@demo/contracts": "0.1.0",
+    "@types/aws-lambda": "8.10.164",
+    "msw": "3.0.3",
+    "ulid": "3.0.2"
+  }
+}

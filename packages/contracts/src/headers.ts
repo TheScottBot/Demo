@@ -31,6 +31,8 @@ export const httpHeaders = {
   vary: { wireName: 'Vary', direction: 'response', boundary: 'public-api' },
   providerApiKey: { wireName: 'X-Api-Key', direction: 'request', boundary: 'provider' },
   ifMatch: { wireName: 'If-Match', direction: 'request', boundary: 'provider' },
+  // CQ7.1: one API key serves every tenant, so the tenant travels on its own.
+  providerTenant: { wireName: 'Demo-Tenant-Id', direction: 'request', boundary: 'provider' },
   providerContract: {
     wireName: 'Demo-Provider-Contract',
     direction: 'response',

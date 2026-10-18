@@ -17,6 +17,12 @@ export const contractBounds = {
   queueMessageBodyMaximumBytes: 256,
 } as const;
 
+// Not in the §3.3 table as drafted: the author set this bound on 18 October
+// 2026 (CU10), so it is kept apart from the table it does not appear in.
+export const authenticationClaimBounds = {
+  subjectClaimMaximumCharacters: 255,
+} as const;
+
 const utf8Encoder = new TextEncoder();
 
 // Body bounds are stated in bytes as received, so a body of multibyte

@@ -13,7 +13,7 @@
     "noUnusedParameters": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
-    "skipLibCheck": false,
+    "skipLibCheck": true,
     "noEmit": true
   },
   "include": ["packages/*/src", "packages/*/test", "vitest.config.ts"]

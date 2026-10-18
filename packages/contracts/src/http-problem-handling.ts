@@ -81,6 +81,10 @@ function problemResponse(
     headers: {
       [httpHeaders.contentType.wireName]: headerValues.problemMediaType,
       [httpHeaders.correlationIdentifier.wireName]: correlationId,
+      // An error answers one request at one moment; caching it would replay a
+      // refusal to a later request it may not apply to. Decided for all three
+      // routes by the author on 18 October 2026.
+      [httpHeaders.cacheControl.wireName]: headerValues.noStore,
       ...(demoError.retryAfterSeconds === undefined
         ? {}
         : { [httpHeaders.retryAfter.wireName]: String(demoError.retryAfterSeconds) }),

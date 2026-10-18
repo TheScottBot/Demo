@@ -59,7 +59,14 @@ Each entry is a choice CE1 made where the specification left room, dated, with i
 | 2026-10-18 | headers | Provider facing headers (`X-Api-Key`, `If-Match`, `Demo-Provider-Contract`) declared with the public ones, each marked with its boundary | §2.4 check 3 covers every header name in §3 and §4 |
 | 2026-10-18 | fault prefixes | `flaky-`, `throttle-`, `poison-` and `conflict-` apply to writes only; `slow-` and `down-` to reads and writes | `flaky-` and `throttle-` are counted per idempotency key, which only writes carry; the rest follow §4.3's wording |
 
+| 2026-10-18 | `authenticationClaimBounds` | `sub` bounded at 255 characters, kept beside `contractBounds` rather than in it | Author decision (CU10); the §3.3 table as drafted has no such row, and `contractBounds` mirrors that table |
+| 2026-10-18 | `withHttpProblemHandling` | Every problem document carries `Cache-Control: no-store`, on all three routes | Author decision; §3.4 already required it on the command and status routes |
+| 2026-10-18 | `httpHeaders.providerTenant` | `Demo-Tenant-Id` on every provider request | CQ7.1: one API key serves every tenant |
+| 2026-10-18 | `providerWireStatuses` | The statuses of every provider answer, including the CQ7 decisions: 401 for a refused key, 400 for an invalid request, 404 for a record or section not held, 412 for a stale `If-Match`, 428 for a missing one, 422 for a reused key, 201 for an append | CQ7.2 to CQ7.5 and CQ7.7; one table both the adapters and the doubles read |
+| 2026-10-18 | provider versions | SHA-256 of the provider's own sections, keys sorted at every level, list order kept, no whitespace; first 16 hexadecimal characters. Implemented once in `packages/test-doubles` (`computeProviderVersion`) | CQ7.6; only the doubles and the mock servers compute versions |
+| 2026-10-18 | notes appends | The provider mints `noteId` and `writtenAt`; a full notes section (100 entries) refuses another append with 400 | CQ7.7; §3.7 bounds the section |
+| 2026-10-18 | provider idempotency | Keys are scoped by provider and tenant; the request fingerprint is method, path and canonical body, leaving out `If-Match` | A client retrying a request may have read the new version since its first attempt |
+
 ## Open questions for the author
 
-- A bound for the `sub` claim. §3.3 has none.
-- Whether problem documents on the read route carry `Cache-Control`. §3.4 sets `no-store` for the command and status routes and leaves the read route to Spec 02 §5; the wrapper currently sets no `Cache-Control` on any problem document.
+None at present.

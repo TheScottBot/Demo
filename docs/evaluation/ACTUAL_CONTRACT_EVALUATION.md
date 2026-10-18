@@ -473,6 +473,114 @@ Done when: the suite passes, lint is clean, and the pure import check passes on 
 
 Open questions raised by CE1 are listed in `packages/contracts/CONTRACT.md`: a bound for the `sub` claim, and `Cache-Control` on read route problem documents.
 
+## CE2 Shared test doubles
+
+Phase started 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine on 18 October 2026; awaiting the author's reproduction. (The Done so far list below was written mid phase and is kept as it was; the complete record follows the answers.)
+
+### Done so far
+
+- `packages/test-doubles` workspace, depending on `@demo/contracts` and `msw` 3.0.3 (CU6).
+- The payload format 2.0 event builder (`buildVerifiedClaimsEvent`, `buildLambdaContext`, `publicRouteNamed`), delivering headers as CU3 observed: lower cased, duplicates joined by commas.
+- The synthetic record set: 20 records per tenant (CU11), one per fault prefix and seven ordinary, generated from position, with each tenant's content distinct under the same identifiers. The tests define the synthetic set as a closed set of value shapes.
+- Tests first: both test files failed with `Cannot find module '../src/index'` before the source existed; 30 tests pass now. Planted regressions: duplicate headers keeping only the last value (1 failed), an empty default subject (2 failed), a fixture string outside the synthetic set (1 failed), record content ignoring the tenant (1 failed). A first, weaker tenant plant (only the title made tenant blind) was not caught, correctly, since the records still differed in other fields; it was replaced by the stronger plant.
+
+### Gaps found in the provider wire contract
+
+The msw doubles must implement §4.3 exactly, and §4.3 and §4.4 leave these open. Each is a wire contract choice between the adapters (Specs 02, 03) and the providers, so it is raised as CQ7 rather than guessed.
+
+| Gap | Why it matters |
+|---|---|
+| How the tenant reaches a provider | §4.3 keys the store by provider, tenant and record, but `GET /records/{recordId}` carries no tenant, and one API key serves all tenants (§2.3 names one secret per provider) |
+| The answer to a missing or wrong `X-Api-Key` | the adapters must map it to an outcome |
+| The answer to a write missing `If-Match` or `Idempotency-Key` | §4.3 says both are required but not what a breach returns |
+| A repeated `Idempotency-Key` with a different request | §4.3 defines only the replay |
+| A write to a record or section the provider does not hold | create, or refuse |
+| The canonical form hashed for a version | §4.3 names a canonical form without defining it; CE2 and CE4 must agree byte for byte |
+| Who mints a note's `noteId` and `writtenAt` on append, and the append status | `NotesAppendPayload` carries only `text`; §4.4 allows 200 or 201 |
+
+### Answers, 18 October 2026
+
+Given by the author in the working session: accept CQ7 items 1 to 7 as recommended, the shared provider simulation, a 255 character `sub` bound, and `no-store` on read route problem documents.
+
+| Item | Decision |
+|---|---|
+| CQ7.1 | Every provider request carries `Demo-Tenant-Id`, held to the tenant grammar; missing or malformed answers 400 |
+| CQ7.2 | A missing or wrong `X-Api-Key` answers 401 |
+| CQ7.3 | A write without `If-Match` answers 428; a missing or malformed `Idempotency-Key` answers 400 |
+| CQ7.4 | A repeated `Idempotency-Key` with a different request inside the replay window answers 422 |
+| CQ7.5 | A write to a record the provider holds nothing of, or to a section it does not own, answers 404; providers never create records |
+| CQ7.6 | The version is the first 16 hexadecimal characters of the SHA-256 of the provider's own sections as JSON, object keys sorted at every level, list order kept, no whitespace |
+| CQ7.7 | On append the provider mints `noteId` (a ULID) and `writtenAt`, and answers 201; a replace answers 200; every success carries `ETag` and `Demo-Provider-Contract` |
+| Simulation | One transport free provider simulation in `packages/test-doubles`, wrapped by the msw doubles (CE2) and the local mock servers (CE4) |
+| `sub` bound | 255 characters (CU10, author decision) |
+| Problem documents | `Cache-Control: no-store` on every problem document, on all three routes |
+
+### Work completed
+
+- Contract additions in `packages/contracts` for the decisions above: `authenticationClaimBounds`, the `sub` check in `readAuthenticationContext`, `no-store` in `withHttpProblemHandling`, `httpHeaders.providerTenant`, `providerWireStatuses`. Each is recorded in `CONTRACT.md`. They were driven by a new test file, `author-decisions-ce2.test.ts`, whose five new assertions failed before the change; no earlier assertion was edited.
+- `canonicalJson` and `computeProviderVersion` (CQ7.6).
+- `ProviderSimulationStore`, with an in memory store seeded from the synthetic records and keyed as §4.3 states.
+- `simulateProviderRequest`: one mock provider's whole behaviour, free of transport, for CE2 and CE4 to wrap.
+- The msw doubles: `createProviderDoubleHandlers` and `startProviderDoubles`, which listens with `onUnhandledFrame: 'error'` (CU6).
+
+### Tests first
+
+| Test file | First run, before its source existed |
+|---|---|
+| `canonical-version.test.ts`, `provider-simulation.test.ts` | written together; failed to import the missing exports |
+| `msw-provider-doubles.test.ts` | `TypeError: Cannot read properties of undefined (reading 'map')`: `syntheticProviderConnections` did not exist |
+
+One test of this phase was corrected before it first passed: the `down-a-` write check read the record first, and `down-a-` rightly refuses that read too.
+
+Planted regressions, each restored byte for byte afterwards:
+
+| Planted regression | First result | After strengthening the test |
+|---|---|---|
+| msw listening with the old `onUnhandledRequest` option | not caught: the unmatched request still rejected, because its host does not resolve | caught (1 failed): the test now requires msw's own refusal |
+| a repeated key applying the write again instead of replaying | not caught: a re-apply of the same payload under the same clock gives an identical response | caught (1 failed): the replay now carries the original, stale `If-Match` and the clock moves on |
+| reads ignoring the tenant | caught (3 failed) | |
+| the canonical form not sorting keys | caught (3 failed) | |
+| `flaky-` failing one attempt too many | caught (4 failed) | |
+| a stale `If-Match` accepted | caught (1 failed) | |
+
+### Reproduction report
+
+| Item | Value |
+|---|---|
+| Platform | Windows 11 Home 10.0.26200 |
+| Node.js, npm | v22.23.2, 10.9.8 (target Node.js 24; CQ5 not yet done) |
+| New pins | `msw` 3.0.3, `ulid` 3.0.2 (test-doubles), `@types/aws-lambda` 8.10.164 |
+
+Commands, from the repository root:
+
+```bash
+npm ci
+npm run typecheck
+npm run lint
+npm run format:check
+npm test --workspace packages/test-doubles
+npm test
+```
+
+| Check | Result |
+|---|---|
+| Typecheck | exit 0; a planted type error in `packages/test-doubles/src` gave exit 1 |
+| Lint | exit 0, 0 warnings |
+| Format | all files formatted |
+| Focused suite (`packages/test-doubles`) | 5 files, 178 tests passed, about 4 seconds (the slow- check waits the full 3,000 ms) |
+| Full suite | 19 files, 529 tests passed |
+| Tests skipped | none |
+| Tests requiring the author | none |
+
+Done when: the suite passes. It does on the agent's machine; the phase is complete once the author reproduces it on a clean machine.
+
+### Findings
+
+| For | Finding | Evidence | Likely fix |
+|---|---|---|---|
+| Spec 00 CE3, `IMPLEMENTATION_DEVIATIONS.md` | `tsconfig.json` now sets `skipLibCheck: true`. msw 3.0.3's declarations (via `@mswjs/interceptors`) name DOM types such as `RequestInfo`, `BodyInit` and `MessageEvent`, which a Node only `lib` does not define. The alternative, adding the `DOM` lib, would let browser globals typecheck in Lambda code. Our own sources are still checked in full: a planted type error still fails | 20 TS errors, all inside `node_modules/@mswjs/interceptors` | record as a deviation from datum 0.10's strictest setting, with this reason and the planted error as its covering test |
+| Specs 02, 03 | The provider double is ready: `startProviderDoubles()` in `beforeAll`, `reset()` in `afterEach`, `stop()` in `afterAll`; connections in `syntheticProviderConnections` | `msw-provider-doubles.test.ts` | use it; do not build another |
+
 # Spec 01 entry point
 
 Plan stage not started.

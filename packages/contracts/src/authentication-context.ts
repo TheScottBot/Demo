@@ -1,5 +1,5 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
-import { contractBounds } from './bounds';
+import { authenticationClaimBounds, contractBounds } from './bounds';
 import { DemoError } from './errors';
 import { TenantIdentifierSchema, scopeNamePattern } from './grammars';
 import type { ScopeName } from './routing';
@@ -78,6 +78,9 @@ export function readAuthenticationContext(
   const subjectClaim = claims['sub'];
   if (typeof subjectClaim !== 'string' || subjectClaim.length === 0) {
     refuseClaim(subjectClaim === undefined ? 'subject-claim-missing' : 'subject-claim-invalid');
+  }
+  if (subjectClaim.length > authenticationClaimBounds.subjectClaimMaximumCharacters) {
+    refuseClaim('subject-claim-too-long');
   }
   const tenantClaim = claims['tenant_id'];
   if (tenantClaim === undefined) {
