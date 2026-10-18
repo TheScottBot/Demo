@@ -68,7 +68,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 | Phase | Status | Depends on | Note |
 |---|---|---|---|
-| Plan stage | not started | | |
+| Plan stage | in progress | | evidence gathered 18 October 2026; RD1, RQ1 to RQ3 open |
 | RE1 Aggregate ETag and merge | not started | CE1, CE2, CE5 | |
 | RE2 Read adapters | not started | CE1, CE2, CE5 | use the msw doubles; see the `max-age` finding |
 | RE3 Fan-out | not started | CE1, CE2, CE5 | |
@@ -114,7 +114,10 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | ED1 Identity provider | open | EE2 |
 | ED2 Per tenant fairness | open | EE3's scope |
 | ED3 401 body | open | EE4's 401 assertions |
-| RD1 Enable the read cache | open | RE7 |
+| RD1 Enable the read cache | open | RE7; asked at the Spec 02 Plan stage exit |
+| RQ1 RE6 under CQ6 | open | RE6 |
+| RQ2 RU15 latency gate under CQ6 | open | RE6 author gate |
+| RQ3 RU author values | open | RE2 to RE5 |
 | WD1 Applying commands after a provider outage | open | WE3, WE5 |
 | WD2 Canonical form for `requestHash` | open | Spec 03 intake |
 | WD3 Retention | open | Spec 03 |
@@ -136,5 +139,5 @@ Each is set out with its evidence and likely fix in the evaluation record.
 | Spec 00 CE6 | wire `MockProviders` and pass its connections to the read and write paths; that breaks the CE5 assertion of three functions per stack, to be raised with the author then |
 | Spec 00 §2.5 | `README.md`, `CHANGELOG.md`, `SECURITY.md` and `PRIVACY.md` have no owning phase |
 | Spec 01 | per route throttling needs L1 `CfnStage.routeSettings`; the exposed CORS headers cannot be derived from header direction alone; the audience check for Cognito tokens |
-| Spec 02 | an over bound `max-age` is refused by the contract, not capped; a timed out fetch rejects with `TimeoutError` |
+| Spec 02 | a timed out fetch rejects with `TimeoutError`; adapters must send `Demo-Tenant-Id` (CQ7.1); the four pure files need listing in the tree checks at RE1 (the earlier `max-age` finding is withdrawn) |
 | Spec 03 | no fault prefix makes a write time out; a timed out fetch rejects with `TimeoutError` |

@@ -822,7 +822,88 @@ Plan stage not started.
 
 # Spec 02 read path
 
-Plan stage not started.
+Plan stage worked on 18 October 2026, after reading Spec 02 Draft 2 once, top to bottom. Status: evidence gathered; author decisions outstanding (Decisions still needing the author, at the end of this section).
+
+## Shared ground
+
+- Reference implementations: read in the Spec 00 Plan stage (commits and what was taken are recorded there); nothing further applies to the read path.
+- Environment: as the Spec 00 record states; local Node.js v22.23.2, target Node.js 24 (CQ1, CQ5), nothing deployed (CQ6).
+- Built and ready for this stream: `packages/contracts` (CE1), the msw doubles and event builder (CE2), the tree checks (CE3), the local mock providers (CE4), and `createDemoNodejsFunction` with the `ReadPath` interfaces (CE5).
+
+## Correction to an earlier finding
+
+(18 October 2026.) The CE1 findings recorded that Spec 02 caps an over bound provider `max-age` while the contract refuses it. Reading Spec 02 §3.2 in full shows no conflict: it checks `Cache-Control` against Spec 00 §3.3 and answers `header-invalid` on a breach, and caps only valid values (at most 86,400) at RU5. `parseCacheControlMaxAge` already reports a breach as invalid, which is what RE2 needs. The CE1 finding stands in its table as history, and is withdrawn here.
+
+## RU values
+
+| Identifier | Value assumed | Basis | Conclusion |
+|---|---|---|---|
+| RU1 | per provider timeout 1,500 ms | author decision | consistent: below CU9's 3,000 ms slow fault, so `slow-` records time the adapter out, and below RU2 |
+| RU2 | fan-out budget 2,500 ms | author decision | consistent: below RU11 (5 s) and Spec 01 EU10 (6 s), leaving room for §4.3's second call |
+| RU3 | `AbortSignal.any` and `AbortSignal.timeout` abort `fetch` | run (Spec 00 CU7) | holds on Node.js v22.23.2; a timeout rejects with `TimeoutError`, a plain abort with `AbortError`. To be rerun on Node.js 24 (CQ5) |
+| RU4 | `ttlSeconds` 60 when `max-age` is absent | author decision | consistent with CU11's mock `max-age` of 60 |
+| RU5 | `ttlSeconds` capped at 300 | author decision | consistent; see the correction above for over bound values |
+| RU6 | `fetch` keeps connections alive across invocations without an explicit agent | read and run, below | holds, within the provider's keep alive window |
+| RU7 | `Retry-After` 5 s on 503 | author decision | consistent |
+| RU8 | DynamoDB TTL deletes lazily | not read | needed only by RE7, unscheduled under RD1's recommendation |
+| RU9 | the runtime may freeze unawaited work | not read | needed only by RE7, as RU8 |
+| RU10 | memory 512 MB | author decision | to be measured: under CQ6 there is no Lambda to measure on, so the value is a synth constant |
+| RU11 | timeout 5 s | author decision | consistent: above RU2, below EU10 |
+| RU12 | reserved concurrency 100 | author decision | see the note below |
+| RU13 | provisioned concurrency 2 in `demo` | author decision | a synth constant under CQ6; it would cost money only if deployed |
+| RU14 | alarm thresholds | author decision | consistent |
+| RU15 | p95 below 800 ms at 20 requests a second | author gate | not measurable under CQ6; RQ2 below |
+
+Note on RU12: Spec 01 EU11 sets the read route's burst at 200 requests a second. By Little's law, at RU15's p95 of 0.8 s a sustained 200 a second needs about 160 concurrent executions, more than 100. At EU11's steady rate of 100 a second it needs about 80. So 100 serves the rate, and a full burst would be throttled by Lambda before the gateway. Under CQ6 this matters only if the family is ever deployed; it is set out for the author's RU12 decision.
+
+## RU6 experiment
+
+Basis: read from `docs/docs/api/Client.md` at `nodejs/undici` tag v6.28.0, the version Node.js v22.23.2 bundles (`process.versions.undici`), retrieved 18 October 2026; then run.
+
+Read: pipelining defaults to 1, which keeps connections alive; `keepAliveTimeout` defaults to 4,000 ms and "may be overridden by keep-alive hints from the server", less a 2,000 ms `keepAliveTimeoutThreshold`; the override is capped at 600,000 ms.
+
+Run: a local `node:http` server counting TCP connections, called by the built in `fetch` with no agent (`keep-alive-experiment.mjs` in scratch).
+
+```text
+server keep-alive 30 s:
+first call: new connection: true, total 1
+immediately after: new connection: true, total 2
+after 1 s idle: new connection: false, total 2
+after 3 s idle: new connection: false, total 2
+after 5 s idle (past the 4 s keepAliveTimeout): new connection: false, total 2
+after the server closed the idle connection: status 200, new connection: true, total 3
+
+server keep-alive default (5 s):
+after 1 s idle: new connection: false
+after 3 s idle: new connection: true
+after 5 s idle: new connection: true
+after the server closed the idle connection: status 200, new connection: true
+```
+
+Conclusions:
+
+- RU6 holds: the built in `fetch` reuses a connection with no explicit agent, for as long as the server's `Keep-Alive` hint allows less 2 seconds, or 4 seconds without a hint. Across Lambda invocations a connection is reused when the next call comes within that window, and otherwise replaced at the cost of a new handshake, not a failure.
+- A call made at once after another opened a second connection in both runs: the first socket is released a moment after its body is read. Concurrent calls to one provider each take their own connection, which pipelining 1 implies.
+- Not observed, because nothing is deployed: a socket left half open by a Lambda freeze. If one fails mid request it surfaces as a transport error, and §3.1 forbids a retry, so that provider reads as `error` for that request.
+
+## Design notes for the read phases
+
+Recorded so the phases do not rediscover them.
+
+- RE2: the adapters must also send `Demo-Tenant-Id`, which CQ7.1 added to the provider contract after Spec 02 was drafted; §3.2's header list predates it.
+- RE2: the adapter takes its API key through an injected reader, so the Lambda entry reads it from Secrets Manager once per execution environment (Spec 00 §2.3) and local checks pass the synthetic key.
+- RE2 and RE3: telling an abort from another failure by `abortSignal.aborted` rather than by the error's name, since a timeout rejects as `TimeoutError` and a plain abort as `AbortError` (RU3).
+- RE1: base64url is available on Node.js 22 through `Buffer` (`toString('base64url')`), a global needing no import; `Uint8Array.prototype.toBase64` is not available on v22.23.2 (run).
+- RE1 to RE4: `tree-checks/pure-modules.json` lists pure module directories, while §2 names four pure files inside `services/read/src`. Listing them is a Spec 00 change to the tree checks, made at the start of RE1.
+- RE4: another tenant's record is answered 404 because every provider is keyed by tenant (Spec 00 §4.3), so a read with the wrong tenant finds nothing anywhere.
+
+## Decisions still needing the author
+
+Batched for the Spec 02 Plan stage exit (datum 0.3). RD1 is stated in the five part form in Spec 02 §9.
+
+- **RQ1** How RE6 runs under CQ6. Blocks RE6.
+- **RQ2** What becomes of the RU15 latency gate under CQ6. Blocks RE6's author gate.
+- **RQ3** The RU author values (RU1, RU2, RU4, RU5, RU7, RU10 to RU14). Block RE2 to RE5.
 
 # Spec 03 write path
 
