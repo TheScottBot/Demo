@@ -48,6 +48,10 @@ Each runs as its own job in `.github/workflows/tree-checks.yml`, on every pull r
 
 What the tools cannot express is left to review: quotation marks used for emphasis (datum 0.8), and bounds below 1,000, which are too common as ordinary numbers for check 3 to search for.
 
+## A caution when testing against the msw doubles
+
+In msw 3.0.3, a suite that both cancels a mocked response body and sends a request no double matches can see a later request escape interception (the RE2 record). Every synthetic host is under `example.test`, which never resolves, so an escape fails loudly rather than reaching anything. Until the doubles gain a catch all handler, inject network failures through an adapter's `fetchImplementation` rather than sending an unmatched request.
+
 ## Local mock providers
 
 Under CQ6 the mock providers run on this machine: `npm start --workspace services/mock-providers` serves provider-a, provider-b and provider-c on ports 4101, 4102 and 4103, from the same handler the Lambdas run, seeded with the synthetic records and held in memory. Each accepts the synthetic key `syntheticProviderApiKey(providerId)` gives (`packages/test-doubles`). Stop it with Ctrl+C. Tests start their own servers on free ports (`startLocalMockProviders`).
@@ -74,7 +78,7 @@ Only the author can clear these, and the agent never claims one has passed (datu
 
 | Gate | Owner | State |
 |---|---|---|
-| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1 to CE5 and RE1 |
+| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1 to CE5, RE1 and RE2 |
 | See each CI job fail on a planted violation and pass, on GitHub | Spec 00 CE3 | outstanding: needs a push; proven locally only |
 | Install Node.js 24.22.0 locally (CQ5) | Spec 00 | outstanding; an action rather than a gate, listed so it is not lost |
 | The manual smoke check through the public API | Spec 01 EE5 | to be redefined under CQ6 in the Spec 01 Plan stage |

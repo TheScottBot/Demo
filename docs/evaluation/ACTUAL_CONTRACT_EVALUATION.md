@@ -969,6 +969,78 @@ Done when: the suites pass, and the pure import check passes on both modules. Bo
 
 To be asked in the five part form at RE4, the phase it blocks. §4.2 says an ETag is emitted only when every provider is `ok` or `not-modified`. Read literally, a record that one provider holds nothing of (that provider answers `not-found`, as provider-c does for `record-0006`) can never be given an ETag, and so never answered 304. Counting `not-found` as complete would allow it, but then a provider that held part of a record and now answers `not-found` must not let a conditional read answer 304 over the stale copy.
 
+## RE2 Read adapters
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Assumptions verified
+
+- RU3: an abort fires through `fetch` as the signal's reason, here `TimeoutError` (`slow-a-` with a 100 ms signal).
+- RU4, RU5: the default of 60 and the cap of 300, each tested.
+- RU6: met by using the runtime's `fetch` with no agent, as the Plan stage experiment showed; nothing in the adapter configures a dispatcher.
+- msw 3.0.3's `server.events.on('request:start', ...)` hands the listener the real `Request` (read from its declarations), so the requests the adapter sends are checked directly.
+
+### Work completed
+
+- `adapters/http-read-adapter.ts`: `createHttpReadAdapter`, the shared transport and mapping, and `createConfiguredReadAdapter`, which builds one from the environment (Spec 00 §2.3), refusing a base URL that is neither https nor the loopback address the local mock providers use (CQ6), and a secret variable that is not an ARN.
+  - It sends `X-Api-Key`, `Demo-Tenant-Id` (CQ7.1), `X-Correlation-Id`, and `If-None-Match` only when a version is known.
+  - For 200 and 304 it checks `Demo-Provider-Contract` before anything else, then `ETag` and `Cache-Control`.
+  - It refuses a declared `Content-Length` over the bound without reading, and otherwise reads the body chunk by chunk, cancelling the rest as soon as the bound is crossed.
+  - It decodes the body as strict UTF-8 and validates it against the §4.4 schema, also refusing a body about another record.
+  - It discards every body it does not need, so the connection returns to the pool.
+- `adapters/provider-{a,b,c}-read-adapter.ts`: each sets only its providerId, base URL variable and secret variable (§3.2). `adapters/read-adapters.ts` composes the three in routing table order.
+- `read-path-settings.ts`: RU4 and RU5.
+
+Two decisions within the phase, recorded here:
+
+- The adapter rethrows its signal's reason when the signal has fired. `ProviderReadResult` has no timeout outcome, and §3.1 gives the fan-out the mapping of an abort to `timeout`. Any other failure of the call is `transport`.
+- A body about another record is `schema-invalid`; §3.3 does not name the case, and a provider answering for the wrong record is as untrustworthy as a malformed one.
+
+### Tests first
+
+Both test files failed before their source existed. Four of the environment refusal tests passed at that point for the wrong reason: calling an undefined function throws, which satisfies `toThrow`. The planted regression that accepts any URL scheme, below, proves they now refuse for the right one.
+
+Two tests of this phase were wrong at first:
+
+- The `Content-Length` test planted a stream that pulled on construction, so it reported the body as read before the adapter touched it; it now pulls only on demand (`highWaterMark: 0`).
+- The request recorder pushed into an array that was undefined unless the first test block had run. msw answered the listener's exception with a 500, which the adapter rightly reported as `http-status`. It now records plain values into an array initialised at declaration.
+
+### Finding: an msw interception escape
+
+Observed while getting the abort test green. In one test file, a provider-a request whose body the adapter cancelled (a 503, or the oversized body), followed by a refused unmatched request, made the next provider-a request escape interception: it went to the network and failed with `getaddrinfo ENOTFOUND provider-a.providers.example.test`. It reproduced every time with those two predecessors, and never with either alone. Cancelling an unneeded body is the correct behaviour against a real server, and is what keeps the body bound, so the adapter is unchanged.
+
+The escape was contained by design: every synthetic provider host is under `example.test`, a reserved name that never resolves, so an escaped request fails loudly as a transport error rather than reaching anything. The network failure test now injects its failure through `fetchImplementation` and sends no unmatched request. The behaviour is recorded for the owner of the doubles below.
+
+| Planted regression | Result |
+|---|---|
+| contract version not checked | 2 tests failed |
+| body bound doubled | 1 failed |
+| declared `Content-Length` ignored | 1 failed |
+| `max-age` not capped | 1 failed |
+| `Demo-Tenant-Id` not sent | 9 failed |
+| abort swallowed as transport | 1 failed |
+| a body about another record accepted | 1 failed |
+| API key read on every call | 1 failed |
+| any URL scheme accepted | 1 failed |
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 38 files, 913 tests passed, at 100 and at 1,000 property runs; the read path suite passed three runs in a row |
+| Tests skipped | none |
+
+Done when: the suite passes. It does on the agent's machine; complete once the author reproduces it.
+
+### Findings
+
+| For | Finding | Likely fix |
+|---|---|---|
+| Spec 00 CE2 | the msw interception escape above, in msw 3.0.3: a suite that both cancels mocked bodies and sends an unmatched request can have a later request escape | in the doubles, add a final catch all handler answering a network error for every request no provider handler matches, so nothing can pass through whatever msw's own strategy does; that changes what CE2's refusal test sees, so it is raised as a Spec 00 change rather than made here |
+| RE3 | the adapter throws only on abort, with the signal's reason; the fan-out maps exactly that to `timeout` | test with `abortSignal.aborted`, as the Plan stage noted |
+
 # Spec 03 write path
 
 Plan stage not started.
