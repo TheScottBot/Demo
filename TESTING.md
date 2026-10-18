@@ -38,7 +38,7 @@ Each runs as its own job in `.github/workflows/tree-checks.yml`, on every pull r
 
 | Check | Job | Command | What it enforces |
 |---|---|---|---|
-| 1 Prose and typography | `prose-scan` | `npm run check:prose` | datum 0.8: no em or en dash, no double or triple hyphen outside a table separator row or a flag token, no US spelling; over every file git would commit |
+| 1 Prose, typography and anonymity | `prose-scan` | `npm run check:prose` | datum 0.8: no em or en dash, no double or triple hyphen outside a table separator row or a flag token, no US spelling; and, at the author's instruction, no term naming the real organisation or domain, in prose or in code identifiers; over every file git would commit |
 | 2 Pure module imports | `pure-imports` | `npm run check:pure-imports` | datum 0.10: the modules in `tree-checks/pure-modules.json` import none of the platform modules listed there; ESLint enforces the same list in the editor |
 | 3 Single definition | `single-definition` | `npm run check:single-definition` | datum 0.12: no header name, distinctive bound, route path, contract declaration name or parallel list of contract values is declared outside `packages/contracts` |
 | 4 Typecheck and lint | `typecheck-and-lint` | `npm run typecheck`, `npm run lint`, `npm run format:check` | `strict` TypeScript; ESLint with warnings as errors; Prettier |

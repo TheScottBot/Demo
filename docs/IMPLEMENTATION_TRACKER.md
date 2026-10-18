@@ -10,7 +10,7 @@ Spec 00 is built up to CE6, which waits for the streams (RE5, WE8, EE3). RE1 to 
 
 ## Anonymity
 
-The family is an anonymous proof of concept (author, 18 October 2026): nothing in the repository may name the real organisation or its domain. Use the specifications' generic vocabulary: records, sections, providers, tenants. A search on 18 October 2026 found nothing to change.
+The family is an anonymous proof of concept (author, 18 October 2026): nothing in the repository may name the real organisation or its domain. Use the specifications' generic vocabulary: records, sections, providers, tenants. Check 1 enforces it: its identifying-term rule fails on any listed term, in prose or split out of a code identifier (the lockfile excepted).
 
 ## Resuming work
 
@@ -76,7 +76,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | RE1 Aggregate ETag and merge | awaiting reproduction | CE1, CE2, CE5 | `services/read`: `aggregate-etag.ts`, `record-merge.ts`, both proven pure; ETag emission and 304 rules left to RE4 |
 | RE2 Read adapters | awaiting reproduction | CE1, CE2, CE5 | `services/read/src/adapters`: `HttpReadAdapter` and the three provider adapters, every §3.3 row tested |
 | RE3 Fan-out | awaiting reproduction | CE1, CE2, CE5 | `provider-fan-out.ts`, proven pure; per provider deadline, budget and parent signal; adapters that ignore abort still time out |
-| RE4 Read handler | not started | CE1, CE2, CE5 | CD1 freezes the contract after RE4 and WE2 |
+| RE4 Read handler | blocked | CE1, CE2, CE5, RQ4 | started 18 October 2026; waiting on RQ4 (ETags when a provider answers not-found) |
 | RE5 ReadPath construct | not started | CE1, CE2, CE5 | |
 | RE6 Deployed checks against the mock providers | not started | RE4, CE4 | under RQ1, run locally against the local mock providers; no longer blocked on deployment |
 | RE7 Read cache | not scheduled | RD1 | RD1 leaves it unscheduled |
@@ -122,6 +122,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | RQ1 RE6 under CQ6 | answered | an automated suite against the local mock providers |
 | RQ2 RU15 latency gate under CQ6 | answered | set aside; deviation entry 7 |
 | RQ3 RU author values | answered | Appendix A as written, RU12 100 |
+| RQ4 ETags when a provider answers not-found | open | RE4 |
 | WD1 Applying commands after a provider outage | open | WE3, WE5 |
 | WD2 Canonical form for `requestHash` | open | Spec 03 intake |
 | WD3 Retention | open | Spec 03 |

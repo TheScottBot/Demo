@@ -7,7 +7,7 @@ import ts from 'typescript';
 // Quotation marks used for emphasis are a datum 0.8 rule no tool can tell
 // from quotation, so they are left to review (TESTING.md).
 
-export type ProseRule = 'em-dash' | 'en-dash' | 'hyphen-run' | 'us-spelling';
+export type ProseRule = 'em-dash' | 'en-dash' | 'hyphen-run' | 'us-spelling' | 'identifying-term';
 
 export interface ProseFinding {
   readonly filePath: string;
@@ -217,6 +217,50 @@ function findUsSpellings(
   return findings;
 }
 
+// The family is an anonymous proof of concept (the author, 18 October 2026):
+// no file may name the real organisation or its domain. Stored reversed, like
+// the spelling list, so the list is not itself a finding; a space in a term
+// matches an optional space, and every term may take a plural s.
+const reversedIdentifyingTerms = [
+  'shn',
+  'nalp erac',
+  'tneitap',
+  'lacinilc',
+  'naicinilc',
+  'latipsoh',
+  'esrun',
+  'gnisrun',
+  'noitpircserp',
+  'noitacidem',
+  'eracshtlaeh',
+  'sisongaid',
+  'sesongaid',
+];
+
+const identifyingTermPattern = new RegExp(
+  `\\b(${reversedIdentifyingTerms
+    .map((reversedTerm) => reversedTerm.split('').reverse().join('').replaceAll(' ', ' ?'))
+    .join('|')})s?\\b`,
+  'i',
+);
+
+// Identifiers name the domain as surely as prose does, so code is read too,
+// split into words first: recordSectionId and record_section both become
+// record section before matching.
+function wordsOf(lineText: string): string {
+  return lineText.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ');
+}
+
+function findIdentifyingTerms(filePath: string, text: string): ProseFinding[] {
+  const findings: ProseFinding[] = [];
+  text.split('\n').forEach((lineText, lineIndex) => {
+    if (identifyingTermPattern.test(wordsOf(lineText))) {
+      findings.push({ filePath, line: lineIndex + 1, column: 1, rule: 'identifying-term' });
+    }
+  });
+  return findings;
+}
+
 export function scanProse(filePath: string, text: string): ProseFinding[] {
   // A NUL byte marks a binary file, which holds no prose.
   if (text.includes('\u0000')) {
@@ -232,6 +276,7 @@ export function scanProse(filePath: string, text: string): ProseFinding[] {
       ? proseRangesInSource(filePath, text)
       : [[0, text.length]];
     findings.push(...findUsSpellings(filePath, text, proseRanges));
+    findings.push(...findIdentifyingTerms(filePath, text));
   }
   return findings.sort((first, second) => first.line - second.line || first.column - second.column);
 }

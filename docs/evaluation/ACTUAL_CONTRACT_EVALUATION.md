@@ -1095,6 +1095,8 @@ Done when: the suite passes, and the pure import check passes. Both hold on the 
 
 At the author's instruction the family is an anonymous proof of concept: nothing may name the real organisation or its domain. Every file git would commit was searched for such terms; the only matches were the word "diagnostics" in `TESTING.md` (Node.js tooling) and a substring of a `package-lock.json` integrity hash. No change was needed.
 
+(18 October 2026, after RE3.) At the author's request the check is now automated, as a Spec 00 change to check 1: an identifying-term rule in `tree-checks/src/prose-scan.ts`, with its term list stored reversed so it is not itself a finding. It reads code as well as prose, splitting identifiers into words first, so a camel or snake case spelling is caught; a term inside a longer word is not. The generated lockfile is exempt, as its hashes can hold any letters. Driven by ten new tests, which failed before the rule existed; no earlier assertion was edited. Proven: a planted term in a Markdown file and one in a code identifier each failed `npm run check:prose`, and both passed once removed. Planted regressions: identifiers not split into words (2 tests failed), the rule not run (10 failed).
+
 # Spec 03 write path
 
 Plan stage not started.

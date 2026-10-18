@@ -117,3 +117,49 @@ describe('files that are not text', () => {
     expect(rulesFound('image.png', `binary${String.fromCodePoint(0)}${emDash}`)).toEqual([]);
   });
 });
+
+// Added at the author's instruction, 18 October 2026: the family is an
+// anonymous proof of concept, so no file may name the real domain. Every
+// term is written reversed here, as in the scan's own list.
+describe('identifying terms', () => {
+  it.each([
+    ['an organisation acronym', 'shn'],
+    ['the record type, two words', 'nalp erac'],
+    ['the record type, plural', 'snalp erac'],
+    ['a subject of the records', 'tneitap'],
+    ['a domain adjective', 'lacinilc'],
+    ['a professional', 'esrun'],
+    ['a place', 'latipsoh'],
+    ['a domain noun', 'noitpircserp'],
+  ])('finds %s in prose', (_caseName, reversedTerm) => {
+    expect(rulesFound('notes.md', `A line about the ${usWord(reversedTerm)} here.`)).toEqual([
+      'identifying-term',
+    ]);
+  });
+
+  it('finds a term in any case, and joined as a code identifier', () => {
+    expect(rulesFound('notes.md', usWord('SHN'))).toEqual(['identifying-term']);
+    expect(rulesFound('source.ts', `const ${usWord('dIsnalPerac')} = 1;`)).toEqual([
+      'identifying-term',
+    ]);
+    expect(rulesFound('source.ts', `const ${usWord('nalp_erac')} = 1;`)).toEqual([
+      'identifying-term',
+    ]);
+  });
+
+  it('checks code, not only comments and strings, since an identifier names the domain too', () => {
+    expect(rulesFound('source.ts', `const ${usWord('tneitap')}Record = 1;`)).toEqual([
+      'identifying-term',
+    ]);
+  });
+
+  it('leaves words that merely contain a term alone', () => {
+    expect(rulesFound('notes.md', 'diagnostics, impatience and the word technique')).toEqual([]);
+  });
+
+  it('skips the generated lockfile, whose hashes can hold any letters', () => {
+    expect(
+      rulesFound('package-lock.json', `"integrity": "sha512-abc/${usWord('shn')}+def"`),
+    ).toEqual([]);
+  });
+});
