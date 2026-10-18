@@ -895,6 +895,77 @@ Batched for the Spec 01 Plan stage exit (datum 0.3). ED1 to ED3 are stated in th
     - Trade offs: each is consistent with the limits read above and with the read and write functions' timeouts.
     - Recommendation: Appendix A as written.
 
+### Answers, 18 October 2026
+
+Given by the author in the working session, by choosing "Accept all (Recommended)" when asked whether to accept the recommendations for ED1 to ED3 and EQ1 to EQ4. That choice is the whole of the author's words on them; nothing further was written down.
+
+| Item | Decision |
+|---|---|
+| ED1 | the demo user pool of §4.2, synthesised on the Essentials plan with a `V3_0` pre token generation trigger |
+| ED2 | the per tenant fairness limit is accepted for the demo; `SECURITY.md` records it, in the words above |
+| ED3 | the gateway's 401 body is accepted as it is; `IMPLEMENTATION_DEVIATIONS.md` entry 12, whose covering test asserts the status alone |
+| EQ1 | EE4 is set aside until a stage is deployed; `IMPLEMENTATION_DEVIATIONS.md` entry 13, with EE1 to EE3's synth assertions covering the configuration |
+| EQ2 | EE5 becomes a local smoke the author runs by hand, `npm run smoke:local`, through the real read, intake and status handlers against the local mock providers; `IMPLEMENTATION_DEVIATIONS.md` entry 14 |
+| EQ3 | one app client per tenant; the pure claim mapping takes the tenant from a table of client identifiers the construct builds, and refuses any client not in it |
+| EQ4 | Appendix A as written: EU10 6 and 10 seconds; EU11 read 100 and 200, command 50 and 100, status 100 and 200; EU12 600 seconds and 14 days; EU13 as listed |
+
+### Plan stage exit (Spec 01)
+
+Closed on 18 October 2026: every EU value is read, decided, or recorded as unverified with the author's agreement; every decision is answered. `SECURITY.md` (§6) does not exist yet; it is a Spec 00 §2.5 document with no owning phase, and Spec 01 §6 now has content for it, so EE2 or EE3 writes it.
+
+## EE1 DemoApi against stubs
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17, and after the Spec 01 Plan stage closed. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Assumptions verified
+
+- EU1, EU3, EU4 and EU10: read in the Plan stage (EU3's 404 itself needs a deployed API, deviation entry 13).
+- Read for this phase, as installed: `aws-cdk-lib` 2.273.0 `HttpApi` (`apiName`, `createDefaultStage`, `disableExecuteApiEndpoint`, `defaultDomainMapping`, `addRoutes`), `HttpLambdaIntegration` (`payloadFormatVersion`, `timeout`, `parameterMapping`), `HttpJwtAuthorizer` (`jwtAudience`, `identitySource`) and the route's `authorizationScopes`. `HttpApi.apiEndpoint` throws when the default endpoint is disabled, so with a custom domain the base URL is the domain's.
+
+### Work completed
+
+- `services/entry`, a new workspace whose only export is `DemoApi` (§3).
+- `demo-api-construct.ts`: `DemoApi`, implementing `DemoApiProperties` and `DemoApiOutputs` exactly.
+  - One HTTP API, `demo-<stage>-api`, with the default stage deployed automatically.
+  - The three routes come from the contract's `publicRoutes`, each to its own function by Lambda proxy on payload 2.0, with EU10's timeouts: 6 seconds on the read route, 10 on the command and status routes. There is no default route, and no parameter mapping, so no header is added, removed or rewritten.
+  - The JWT authoriser reads `Authorization`, named from `httpHeaders`, with the issuer and audiences ED1 configures, and sets no route scopes.
+  - A custom domain maps to the API and turns the default endpoint off.
+  - The demo user pool (ED1) is refused with `demo-user-pool-not-built` until EE2 builds it, rather than wired to a placeholder issuer.
+- Not yet wired into `infra`: under CQ9 that follows EE1, but `infra` must name an identity provider, and the demo pool arrives in EE2, so the wiring follows EE2 (Spec 00).
+
+### Tests first
+
+`demo-api-construct.test.ts` failed with `Cannot find module` before its source existed. One assertion then failed on the first build: with a custom domain, `apiEndpoint` cannot be read, so the base URL became the domain's.
+
+The first full run after the clean install failed two of these tests, each timing out at the default 5 seconds while it synthesised a stack inside the test. Each now allows 300 seconds, as the suite's setup does; run alone they had passed.
+
+| Planted regression | Result |
+|---|---|
+| a route left out | 4 tests failed |
+| a default route added | 2 failed |
+| the read timeout at 10 seconds | 1 failed |
+| payload format 1.0 | 3 failed |
+| routes wired to the wrong functions | 2 failed |
+| the authoriser left off | 2 failed |
+| route scopes set | 1 failed |
+| a header rewritten by parameter mapping | 3 failed |
+| the demo pool accepted unbuilt | 1 failed |
+| the default endpoint kept with a custom domain | 1 failed |
+| the token read from another header | 1 failed |
+
+Each planted file was restored byte for byte.
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 71 files, 1,301 tests passed, at 100 and at 1,000 property runs, once the two timeouts were lengthened |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the synth suite passes and lint is clean. Both hold on the agent's machine; complete once the author reproduces them.
 
 # Spec 02 read path
 

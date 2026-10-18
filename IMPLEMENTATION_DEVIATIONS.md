@@ -92,6 +92,30 @@ Each entry is history once its decision is given; a later change to it is a date
 - **Author's decision:** WQ7, 18 October 2026, in the author's words: "WQ7: option (a), the worker sends the client's own Idempotency-Key; record the deviation."
 - **Covering test:** WE5: the worker's provider call carries the operation's stored `idempotencyKey`, and a retried attempt carries the same one.
 
+## 12. The gateway's 401 is not a problem document
+
+- **Rule:** Spec 00 §3.6: every non 2xx response is an RFC 9457 problem document.
+- **Done instead:** a request the JWT authoriser refuses is answered by API Gateway itself, with its own 401 body, before any handler runs. HTTP APIs offer no custom gateway responses (EU5), so the body cannot be made a problem document without a Lambda authoriser.
+- **Why:** a Lambda authoriser would add latency to every request, and runtime code Spec 01 §1 otherwise rules out.
+- **Author's decision:** ED3, 18 October 2026: accepted ("Accept all (Recommended)").
+- **Covering test:** EE4's 401 checks assert the status and nothing of the body; under EQ1 they wait for a deployed stage (entry 13).
+
+## 13. The entry point's deployed checks are set aside
+
+- **Rule:** Spec 01 EE4: `infra/test/entry.spec.ts` against the deployed `stub` stage.
+- **Done instead:** nothing local can run API Gateway, and every EE4 check is the gateway's own behaviour: the 401s, the authoriser's audience and expiry checks, CORS preflight, throttling, and headers reaching a handler unchanged. EE4 waits for a deployed stage. The configuration that produces that behaviour is asserted by EE1 to EE3's synth suites, and the handlers' side by CE5's stub tests and the RE6 and WE9 suites.
+- **Why:** nothing is deployed (entry 3).
+- **Author's decision:** EQ1, 18 October 2026: option (a) ("Accept all (Recommended)").
+- **Covering test:** EE1 to EE3's synth suites.
+
+## 14. The author's smoke check runs locally
+
+- **Rule:** Spec 01 EE5: with `dev` deployed, one read, one command and one status poll through the public API, recorded by the author.
+- **Done instead:** the author runs `npm run smoke:local` by hand: one read, one command and one status poll through the real read, intake and status handlers, in one process against the local mock providers, and records the result in `TESTING.md`. It passes through no gateway, and it is a manual check, not a suite (Spec 00 §5.4).
+- **Why:** nothing is deployed (entry 3).
+- **Author's decision:** EQ2, 18 October 2026: option (a) ("Accept all (Recommended)").
+- **Covering test:** none; it is an author gate.
+
 ## Not deviations
 
 Recorded so they are not mistaken for one.
@@ -101,4 +125,4 @@ Recorded so they are not mistaken for one.
 
 ## Pending
 
-Spec 00 §2.5 names one further entry, to be written only if its decision accepts the departure: Spec 01 ED3 (the gateway's 401 body). Spec 03 WD1 became entry 9.
+Spec 00 §2.5 named two further entries, each to be written only if its decision accepted the departure: Spec 03 WD1 became entry 9, and Spec 01 ED3 entry 12.

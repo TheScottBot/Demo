@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-The Spec 01 Plan stage has its evidence: every EU value is read or set out, and ED1 to ED3 and EQ1 to EQ4 wait on the author. Once they are answered the stage closes and EE1 can start. Specs 02 and 03 are built as far as they go (RE1 to RE6 and WE1 to WE9 await reproduction). CE6 waits on EE3. The contract is frozen at `@demo/contracts` 1.1.0.
+EE1 is built and awaits reproduction. EE2 (the demo user pool, ED1 and EQ3) is next, then EE3; `DemoApi` is wired into `infra` once EE2 gives it an identity provider. Specs 02 and 03 are built as far as they go (RE1 to RE6 and WE1 to WE9 await reproduction). CE6 waits on EE3. The contract is frozen at `@demo/contracts` 1.1.0.
 
 ## Anonymity
 
@@ -42,8 +42,8 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Target runtime | Node.js 24, Lambda `nodejs24.x` on arm64 (CQ1) |
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
-| Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `services/write`, `infra` |
-| Suite | 70 files, 1,289 tests, and all seven tree checks passing on 18 October 2026 |
+| Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `services/write`, `services/entry`, `infra` |
+| Suite | 71 files, 1,301 tests, and all seven tree checks passing on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
@@ -61,12 +61,12 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 | Phase | Status | Depends on | Note |
 |---|---|---|---|
-| Plan stage | awaiting author gate | | evidence recorded 18 October 2026; closes once ED1 to ED3 and EQ1 to EQ4 are answered |
-| EE1 DemoApi against stubs | not started | CE5 | |
-| EE2 Identity provider | blocked | CE5, ED1 | |
+| Plan stage | complete | | closed 18 October 2026; deviation entries 12 to 14 |
+| EE1 DemoApi against stubs | awaiting reproduction | CE5 | `services/entry`: `DemoApi`, its three routes from the contract, the JWT authoriser; the demo pool refused until EE2 |
+| EE2 Identity provider | not started | CE5 | the demo pool on Essentials with a `V3_0` trigger (ED1); one app client per tenant (EQ3) |
 | EE3 Throttling, CORS, logs and alarms | not started | CE5 | ED2 sets its scope |
-| EE4 Deployed checks against the stubs | blocked | EE1 to EE3, CE5 | written for a deployed stage; its local replacement is decided in the Spec 01 Plan stage (CQ6) |
-| EE5 Author smoke gate | blocked | EE4, RE6, WE9 | as EE4 |
+| EE4 Deployed checks against the stubs | set aside | EE1 to EE3, CE5 | until a stage is deployed (EQ1); deviation entry 13 |
+| EE5 Author smoke gate | not started | EE1 to EE3, RE6, WE9 | the author runs `npm run smoke:local` by hand (EQ2); deviation entry 14 |
 
 ## Spec 02 read path
 
@@ -115,13 +115,13 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | CQ7 Provider wire gaps | answered | items 1 to 7 as recommended |
 | CQ8 Check 6 as property runs | answered | accepted; `IMPLEMENTATION_DEVIATIONS.md` entry 1 |
 | CQ9 `DemoApi` wiring after EE1 | answered | accepted; `IMPLEMENTATION_DEVIATIONS.md` entry 5 |
-| ED1 Identity provider | open | EE2 |
-| ED2 Per tenant fairness | open | EE3's scope; EU8 shows WAF cannot attach to an HTTP API |
-| ED3 401 body | open | EE4's 401 assertions; EU5 shows the body cannot be customised |
-| EQ1 EE4 under CQ6 | open | EE4 |
-| EQ2 EE5 under CQ6 | open | EE5 |
-| EQ3 The tenant of a client credentials token | open | EE2 |
-| EQ4 EU author values | open | EE1, EE3 |
+| ED1 Identity provider | answered | the demo user pool, Essentials, `V3_0` trigger |
+| ED2 Per tenant fairness | answered | accepted for the demo; `SECURITY.md` to record it |
+| ED3 401 body | answered | accepted; deviation entry 12 |
+| EQ1 EE4 under CQ6 | answered | set aside until deployed; deviation entry 13 |
+| EQ2 EE5 under CQ6 | answered | `npm run smoke:local`, run by the author; deviation entry 14 |
+| EQ3 The tenant of a client credentials token | answered | one app client per tenant, mapped by client identifier |
+| EQ4 EU author values | answered | Appendix A as written |
 | RD1 Enable the read cache | answered | switch, synth guard and cold start log only; RE7 unscheduled |
 | RQ1 RE6 under CQ6 | answered | an automated suite against the local mock providers |
 | RQ2 RU15 latency gate under CQ6 | answered | set aside; deviation entry 7 |
@@ -142,7 +142,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 ## Open items for the author
 
-- Reproduce CE1 to CE5, RE1 to RE6 and WE1 to WE9 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5, RE1 to RE6, WE1 to WE9 and EE1 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
 - Install Node.js 24.22.0 locally (CQ5).
 
@@ -153,7 +153,7 @@ Each is set out with its evidence and likely fix in the evaluation record.
 | Owner | Finding |
 |---|---|
 | Spec 00 CE2 | msw 3.0.3 let a request escape interception after a cancelled mocked body and a refused unmatched request (RE2 record); add a catch all network error handler to the doubles, raising the change to CE2's refusal test |
-| Spec 00 | wire `DemoApi` into `infra/lib/demo-platform.ts` once EE1 is done (CQ9) |
+| Spec 00 | wire `DemoApi` into `infra/lib/demo-platform.ts` once EE2 gives it an identity provider (CQ9, EE1 record) |
 | Spec 00 CE6 | wire `MockProviders` and pass its connections to the read and write paths; that breaks the CE5 assertion of three functions per stack, to be raised with the author then |
 | Spec 00 §2.5 | `README.md`, `CHANGELOG.md`, `SECURITY.md` and `PRIVACY.md` have no owning phase |
 | Spec 01 | per route throttling needs L1 `CfnStage.routeSettings`; the exposed CORS headers cannot be derived from header direction alone; the audience check for Cognito tokens |

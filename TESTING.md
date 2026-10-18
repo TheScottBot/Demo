@@ -27,6 +27,7 @@ npm run synth
 | Construct contracts and stubs | `packages/construct-contracts/test` | `npm test --workspace packages/construct-contracts` | locally; CI jobs 5 and 6 |
 | Read path | `services/read/test` | `npm test --workspace services/read` | locally; CI jobs 5 and 6 |
 | Write path | `services/write/test` | `npm test --workspace services/write` | locally; CI jobs 5 and 6 |
+| Entry point | `services/entry/test` | `npm test --workspace services/entry` | locally; CI jobs 5 and 6 |
 | Mock providers | `services/mock-providers/test` | `npm test --workspace services/mock-providers` | locally; CI jobs 5 and 6 |
 | Synth assertions | `infra/test` | `npm test --workspace infra` | locally; CI jobs 5 and 6 |
 | Read checks against the local mock providers (Spec 02 RE6) | `infra/test/read.spec.ts` | `npx vitest run infra/test/read.spec.ts`, and within `npm test --workspace infra` | locally; CI jobs 5 and 6 |
@@ -81,11 +82,11 @@ Only the author can clear these, and the agent never claims one has passed (datu
 
 | Gate | Owner | State |
 |---|---|---|
-| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1 to CE5, RE1 to RE6 and WE1 to WE9 |
+| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1 to CE5, RE1 to RE6, WE1 to WE9 and EE1 |
 | See each CI job fail on a planted violation and pass, on GitHub | Spec 00 CE3 | outstanding: needs a push; proven locally only |
 | Install Node.js 24.22.0 locally (CQ5) | Spec 00 | outstanding; an action rather than a gate, listed so it is not lost |
-| The manual smoke check through the public API | Spec 01 EE5 | to be redefined under CQ6 in the Spec 01 Plan stage |
-| The deployed checks against the stubs | Spec 01 EE4 | to be redefined under CQ6 |
+| The manual smoke check | Spec 01 EE5 | under EQ2, the author runs `npm run smoke:local` by hand and records the result here; deviation entry 14 |
+| The deployed checks against the stubs | Spec 01 EE4 | set aside until a stage is deployed (EQ1); deviation entry 13 |
 | The deployed read checks | Spec 02 RE6 | no longer a gate: RQ1 makes RE6 an automated suite, `infra/test/read.spec.ts`, against the local mock providers |
 | The latency target RU15 | Spec 02 RE6 | set aside under CQ6 (RQ2; `IMPLEMENTATION_DEVIATIONS.md` entry 7) |
 | The deployed write checks | Spec 03 WE9 | no longer a gate: WQ1 makes WE9 an automated suite, `infra/test/write.spec.ts`, against the local mock providers |

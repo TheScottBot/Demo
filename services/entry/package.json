@@ -1,0 +1,20 @@
+{
+  "name": "@demo/entry",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spec 01 entry point: the public HTTP API, its JWT authoriser and the DemoApi construct.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --root ../.. services/entry"
+  },
+  "dependencies": {
+    "@demo/construct-contracts": "0.1.0",
+    "@demo/contracts": "1.1.0",
+    "aws-cdk-lib": "2.273.0",
+    "constructs": "10.8.1"
+  }
+}
