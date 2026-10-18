@@ -9,7 +9,7 @@ Each entry is history once its decision is given; a later change to it is a date
 - **Rule:** Spec 00 §2.4 check 6, datum 0.10 GUIDANCE: a fuzz harness on every parser in continuous integration.
 - **Done instead:** every fast-check property in the suite runs at 1,000 generated inputs in the `property-runs` CI job (100 locally). fast-check generates inputs at random from arbitraries; it is not guided by coverage, as a fuzzer such as libFuzzer is.
 - **Why:** the toolchain is TypeScript on Node.js, and the parsers are pure functions that a property can drive directly. A coverage guided fuzzer would add a native toolchain the CI runner is not assumed to have (CE3).
-- **Author's decision:** asked on 18 October 2026; awaiting the answer.
+- **Author's decision:** accepted, 18 October 2026 (CQ8).
 - **Covering test:** `tree-checks/test/property-run-configuration.test.ts` proves the run count reaches fast-check; the CE3 record shows the job failing on a planted parser bug that no example based test caught.
 
 ## 2. `skipLibCheck` is on
@@ -41,7 +41,7 @@ Each entry is history once its decision is given; a later change to it is a date
 - **Rule:** Spec 00 CE5, Work: `infra/bin/app.ts` wiring `DemoApi`, the stubs and the alarm topic for every stage.
 - **Done instead:** CE5 wires the alarm topic and the stubs; `DemoApi` is wired once Spec 01 EE1 exists, as a Spec 00 change.
 - **Why:** `DemoApi` is EE1's construct, and EE1 depends on CE5 (Spec 00 §5.5), so it cannot exist when CE5 is built.
-- **Author's decision:** asked on 18 October 2026; awaiting the answer.
+- **Author's decision:** accepted, 18 October 2026 (CQ9): wire `DemoApi` after EE1.
 - **Covering test:** none yet; the synth assertions for the wiring come with the Spec 00 change.
 
 ## 6. The toolchain departs from §2.1's candidates

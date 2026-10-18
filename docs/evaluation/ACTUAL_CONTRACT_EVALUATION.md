@@ -731,6 +731,10 @@ Commands: those in `TESTING.md`, Running everything locally, and `DEMO_PROPERTY_
 
 Done when: each check has a recorded failing run and a passing run. Locally, it has. The same on GitHub needs a push, which is the author's, and the author's reproduction is outstanding.
 
+### Answers, 18 October 2026
+
+The author accepted CQ8 (check 6 as property runs, deviation entry 1) and CQ9 (`DemoApi` wired after EE1, deviation entry 5).
+
 ### Findings
 
 | For | Finding | Likely fix |
@@ -738,6 +742,79 @@ Done when: each check has a recorded failing run and a passing run. Locally, it 
 | Spec 00 §2.5 | `README.md`, `CHANGELOG.md`, `SECURITY.md` and `PRIVACY.md` still have no owning phase (`TESTING.md` and `IMPLEMENTATION_DEVIATIONS.md` now exist) | assign them to a Spec 00 phase |
 | Specs 02, 03 | the aggregate ETag and queue message parsers need their own fast-check properties for check 6 | written in RE1 and WE5 |
 | Spec 00 | check 3 does not search for bounds below 1,000 | left to review, as `TESTING.md` says |
+
+## CE4 Mock providers
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Scope as built, under CQ6
+
+CE4's Work is three mock provider Lambdas, their HTTP APIs, the store table, the seed script for each stage, and every fault prefix. All of it is built and synthesises. Because nothing is deployed (CQ6), the same handler also runs as three local Node.js servers (`npm start --workspace services/mock-providers`, ports 4101 to 4103), so the streams have real HTTP providers to call. The seed scripts are built and tested against `aws-sdk-client-mock`, but not run: they need a deployed table.
+
+### Assumptions verified
+
+- CU8: the secrets synthesise as `demo/{stage}/providers/{providerId}` (synth assertion).
+- CU9: the slow fault waits 3,000 ms; each mock function's timeout is 10 seconds, asserted to exceed it.
+- CU11: `max-age` 60, replay window 24 hours (also the store's time to live), version prefix 16, throttle `Retry-After` 2, 20 records per tenant; each asserted.
+- `@aws-sdk/lib-dynamodb` 3.1152.0 exports `DynamoDBDocumentClient.from`, `GetCommand`, `PutCommand` and `QueryCommand`; `aws-sdk-client-mock` 4.1.0 offers `callsFake`. Both read from their declarations this phase.
+
+### Work completed
+
+- `services/mock-providers`:
+  - `createDynamoDbProviderStore`: one item per section under the §4.3 keys; idempotency entries under their own partition prefix with a time to live; strongly consistent reads; never a delete.
+  - `createMockProviderHandler`: transport only around `simulateProviderRequest`. It reads the API key once per execution environment (§2.3), decodes base64 bodies, applies the slow fault's delay, and logs one line per request: provider, method, status, and the tenant and correlation identifier only where they pass their grammar. It never logs a body or a key.
+  - `seedMockProviderStore` and the four `seed:{stage}` scripts.
+  - `startLocalMockProviders`, holding request bodies to the command bound.
+  - The Lambda entry point, and the `MockProviders` construct.
+- `packages/test-doubles`: a `./provider-simulation` subpath export without msw, so no Lambda bundle holds a test only dependency, and `syntheticProviderApiKey`, shared by the msw doubles and the local servers.
+- `packages/construct-contracts`: `createDemoNodejsFunction`, the CE5 finding. The stubs now use it; every CE5 test passed unchanged after the refactor.
+
+### Tests first
+
+All six new test files failed before their source existed (`Cannot find module` for five; `createDemoNodejsFunction is not a function` for the sixth). Two issues arose before green:
+
+- The new helper test bundles a real function inside `it` and took 6.3 seconds in the full run, past vitest's 5 second default; it was given a 60 second timeout, as the other synth tests have in `beforeAll`.
+- Lint refused the name `item` (datum 0.5) throughout the DynamoDB fake; it is `tableItem` now.
+
+The DynamoDB fake interprets only the exact requests the store makes and refuses anything else, including any delete.
+
+| Planted regression | Result |
+|---|---|
+| store partition key parts in the wrong order | 2 tests failed |
+| store writing only the first section | 3 failed |
+| idempotency entries expiring at once | 1 failed |
+| API key read on every request | 1 failed |
+| base64 bodies not decoded | 1 failed |
+| mock function timeout no longer than the slow fault | 1 failed |
+| local servers buffering twice the bound | 1 failed |
+
+A local run was also tried by hand: `GET /records/record-0001` answered 200 with the right key and 401 with a wrong one. That run's start script first logged each synthetic API key, which datum 0.15 forbids for any credential; the line was removed before the phase closed. The run's processes also outlived the timeout meant to stop them (on Windows, `timeout` does not reach the child processes) and held `esbuild.exe` open, which made a later `npm ci` fail. The agent identified the three processes by their command lines and stopped them; nothing else was touched.
+
+### Reproduction report
+
+| Item | Value |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 (target 24; CQ5) |
+| New pins | `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`, `@aws-sdk/client-secrets-manager` 3.1152.0 (Apache-2.0, 2026-10-14); `aws-sdk-client-mock` 4.1.0 (dev) |
+
+Commands: those in `TESTING.md`, Running everything locally.
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| The seven tree checks | all exit 0 |
+| Full suite | 34 files, 712 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the local suite passes and the construct synthesises. Both hold on the agent's machine; complete once the author reproduces them. Deploying and seeding are replaced under CQ6.
+
+### Findings
+
+| For | Finding | Likely fix |
+|---|---|---|
+| Spec 00 CE6 | `MockProviders` is not yet wired into `infra/lib/demo-platform.ts`; its connections are what `ReadPath` and `WritePath` take as `providers`. Wiring it adds three functions to each stack, which the CE5 assertion of exactly three functions per stack would then fail: that earlier test must be raised with the author when the wiring is made (datum 0.4) | wire it in CE6, raising the CE5 assertion then |
+| Spec 00 | a write reads then puts without a condition, so two concurrent writes to one record could interleave; acceptable for a double driven by one test at a time | a conditional put on a version attribute, if concurrent use ever matters |
+| Specs 02, 03 | real HTTP providers now run locally; adapters can be checked against them as well as against the msw doubles | use `startLocalMockProviders` in a stream's local checks |
 
 # Spec 01 entry point
 

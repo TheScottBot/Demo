@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-With CE1, CE2, CE3 and CE5 built, every stream can start once the author has reproduced them: the Spec 01, 02 and 03 Plan stages, then EE1 to EE3, RE1 to RE5, and WE1, WE2, WE4, WE6 and WE7. CE4, the local mock provider servers, is the one Spec 00 build phase left before the streams need it (RE6, WE9); the agent recommends it next, unless the author would rather start a stream's Plan stage.
+Spec 00 is built up to CE6, which waits for the streams (RE5, WE8, EE3). Every stream can start once the author has reproduced CE1 to CE5: the Spec 01, 02 and 03 Plan stages, then EE1 to EE3, RE1 to RE5, and WE1, WE2, WE4, WE6 and WE7. The agent recommends a Plan stage next; Spec 02 or Spec 03 first, since their adapters are what the doubles and mock providers were built for.
 
 ## Resuming work
 
@@ -38,8 +38,8 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Target runtime | Node.js 24, Lambda `nodejs24.x` on arm64 (CQ1) |
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
-| Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `infra` |
-| Suite | 28 files, 666 tests, and all seven tree checks passing on 18 October 2026 |
+| Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `infra` |
+| Suite | 34 files, 712 tests, and all seven tree checks passing on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
@@ -49,7 +49,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | CE1 Contract package | awaiting reproduction | Plan stage | `packages/contracts`; amended in CE2 for the `sub` bound, `no-store` and the CQ7 wire rules |
 | CE2 Shared test doubles | awaiting reproduction | CE1 | `packages/test-doubles`: event builder, synthetic records, provider simulation, msw doubles |
 | CE3 Tree wide checks | awaiting reproduction | CE1 | seven checks in `.github/workflows/tree-checks.yml`, each proven locally on a planted violation; seeing them run on GitHub needs a push (author gate); `TESTING.md` and `IMPLEMENTATION_DEVIATIONS.md` written |
-| CE4 Mock providers | not started | CE1, CE2 | under CQ6, local Node.js servers wrapping `simulateProviderRequest`; deployment and seeding to AWS replaced |
+| CE4 Mock providers | awaiting reproduction | CE1, CE2 | `services/mock-providers`: handlers, DynamoDB store, seed scripts and construct, all synthesising; local servers run the same handler (`npm start --workspace services/mock-providers`); deployment and seeding replaced under CQ6 |
 | CE5 Construct contracts and stubs | awaiting reproduction | CE1 | `packages/construct-contracts` and `infra`: §3.11 interfaces, naming, stubs, Powertools adapter, one stack per stage; `DemoApi` wiring waits for EE1 (circular as drafted) |
 | CE6 Wiring real constructs | not started | RE5, WE8, EE3 | |
 
@@ -109,8 +109,8 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | CQ5 Local Node.js | answered, action open | the author installs 24.22.0; CI pins 24.21.0 too |
 | CQ6 Deployed checks | answered | local mock servers, direct invocation, synth assertions; unverified gateway behaviour recorded as deviations |
 | CQ7 Provider wire gaps | answered | items 1 to 7 as recommended |
-| CQ8 Check 6 as property runs | open | accepting `IMPLEMENTATION_DEVIATIONS.md` entry 1 |
-| CQ9 `DemoApi` wiring after EE1 | open | accepting `IMPLEMENTATION_DEVIATIONS.md` entry 5 |
+| CQ8 Check 6 as property runs | answered | accepted; `IMPLEMENTATION_DEVIATIONS.md` entry 1 |
+| CQ9 `DemoApi` wiring after EE1 | answered | accepted; `IMPLEMENTATION_DEVIATIONS.md` entry 5 |
 | ED1 Identity provider | open | EE2 |
 | ED2 Per tenant fairness | open | EE3's scope |
 | ED3 401 body | open | EE4's 401 assertions |
@@ -122,9 +122,8 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 ## Open items for the author
 
-- Reproduce CE1, CE2, CE3 and CE5 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
-- Answer CQ8 and CQ9 (Decisions, above).
 - Install Node.js 24.22.0 locally (CQ5).
 
 ## Findings awaiting their owners
@@ -133,8 +132,8 @@ Each is set out with its evidence and likely fix in the evaluation record.
 
 | Owner | Finding |
 |---|---|
-| Spec 00 | wire `DemoApi` into `infra/lib/demo-platform.ts` once EE1 is done |
-| Spec 00 | a shared `NodejsFunction` props helper, so Specs 02 and 03 reuse the runtime, banner and `NODE_OPTIONS` the stubs use |
+| Spec 00 | wire `DemoApi` into `infra/lib/demo-platform.ts` once EE1 is done (CQ9) |
+| Spec 00 CE6 | wire `MockProviders` and pass its connections to the read and write paths; that breaks the CE5 assertion of three functions per stack, to be raised with the author then |
 | Spec 00 §2.5 | `README.md`, `CHANGELOG.md`, `SECURITY.md` and `PRIVACY.md` have no owning phase |
 | Spec 01 | per route throttling needs L1 `CfnStage.routeSettings`; the exposed CORS headers cannot be derived from header direction alone; the audience check for Cognito tokens |
 | Spec 02 | an over bound `max-age` is refused by the contract, not capped; a timed out fetch rejects with `TimeoutError` |

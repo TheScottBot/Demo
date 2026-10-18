@@ -3,6 +3,7 @@ import { HttpResponse, delay, http, type HttpHandler } from 'msw';
 import { setupServer } from 'msw/node';
 import { ulid } from 'ulid';
 import { simulateProviderRequest } from './provider-simulation';
+import { syntheticProviderApiKey } from './synthetic-provider-keys';
 import {
   createInMemoryProviderStore,
   type InMemoryProviderStore,
@@ -23,7 +24,7 @@ export const syntheticProviderConnections: readonly ProviderDoubleConnection[] =
   providerIdentifiers.map((providerId) => ({
     providerId,
     baseUrl: `https://${providerId}.providers.example.test`,
-    apiKey: `synthetic-api-key-${providerId}`,
+    apiKey: syntheticProviderApiKey(providerId),
   }));
 
 export interface ProviderDoubleOptions {

@@ -6,6 +6,7 @@ export default defineConfig({
     include: [
       'packages/*/test/**/*.test.ts',
       'infra/test/**/*.test.ts',
+      'services/*/test/**/*.test.ts',
       'tree-checks/test/**/*.test.ts',
     ],
   },

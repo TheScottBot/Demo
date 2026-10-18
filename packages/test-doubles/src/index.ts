@@ -3,6 +3,7 @@
 export * from './canonical-version';
 export * from './provider-simulation';
 export * from './provider-simulation-store';
+export * from './synthetic-provider-keys';
 export * from './synthetic-records';
 export * from './verified-claims-event-builder';
 export * from './msw-provider-doubles';

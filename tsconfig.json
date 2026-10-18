@@ -20,6 +20,9 @@
   "include": [
     "packages/*/src",
     "packages/*/test",
+    "services/*/src",
+    "services/*/bin",
+    "services/*/test",
     "infra/bin",
     "infra/lib",
     "infra/test",

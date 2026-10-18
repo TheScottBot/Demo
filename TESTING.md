@@ -25,10 +25,11 @@ npm run synth
 | Contract package | `packages/contracts/test` | `npm test --workspace packages/contracts` | locally; CI jobs 5 and 6 |
 | Shared test doubles | `packages/test-doubles/test` | `npm test --workspace packages/test-doubles` | locally; CI jobs 5 and 6 |
 | Construct contracts and stubs | `packages/construct-contracts/test` | `npm test --workspace packages/construct-contracts` | locally; CI jobs 5 and 6 |
+| Mock providers | `services/mock-providers/test` | `npm test --workspace services/mock-providers` | locally; CI jobs 5 and 6 |
 | Synth assertions | `infra/test` | `npm test --workspace infra` | locally; CI jobs 5 and 6 |
 | Tree check logic | `tree-checks/test` | `npm test` | locally; CI jobs 5 and 6 |
 
-`npm test` runs all of them. Tests are named as sentences: `describe` names the subject and `it` states the behaviour, after the reference implementations. Shared fixtures and doubles live in `packages/test-doubles`; no suite builds its own.
+`npm test` runs all of them. The mock provider handlers are tested against `aws-sdk-client-mock` with a fake of the store table that refuses any request the store does not make. Tests are named as sentences: `describe` names the subject and `it` states the behaviour, after the reference implementations. Shared fixtures and doubles live in `packages/test-doubles`; no suite builds its own.
 
 ## Tree wide checks (Spec 00 §2.4)
 
@@ -45,6 +46,10 @@ Each runs as its own job in `.github/workflows/tree-checks.yml`, on every pull r
 | 7 Synth | `cdk-synth` | `npm run synth` | `cdk synth` for all four stages |
 
 What the tools cannot express is left to review: quotation marks used for emphasis (datum 0.8), and bounds below 1,000, which are too common as ordinary numbers for check 3 to search for.
+
+## Local mock providers
+
+Under CQ6 the mock providers run on this machine: `npm start --workspace services/mock-providers` serves provider-a, provider-b and provider-c on ports 4101, 4102 and 4103, from the same handler the Lambdas run, seeded with the synthetic records and held in memory. Each accepts the synthetic key `syntheticProviderApiKey(providerId)` gives (`packages/test-doubles`). Stop it with Ctrl+C. Tests start their own servers on free ports (`startLocalMockProviders`).
 
 ## Property runs
 
@@ -68,7 +73,7 @@ Only the author can clear these, and the agent never claims one has passed (datu
 
 | Gate | Owner | State |
 |---|---|---|
-| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1, CE2, CE3, CE5 |
+| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1, CE2, CE3, CE4, CE5 |
 | See each CI job fail on a planted violation and pass, on GitHub | Spec 00 CE3 | outstanding: needs a push; proven locally only |
 | Install Node.js 24.22.0 locally (CQ5) | Spec 00 | outstanding; an action rather than a gate, listed so it is not lost |
 | The manual smoke check through the public API | Spec 01 EE5 | to be redefined under CQ6 in the Spec 01 Plan stage |

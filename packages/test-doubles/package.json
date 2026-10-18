@@ -6,7 +6,8 @@
   "description": "Spec 00 shared test doubles: msw provider doubles, synthetic fixtures and the payload format 2.0 event builder.",
   "license": "MIT",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./provider-simulation": "./src/provider-simulation-entry.ts"
   },
   "scripts": {
     "test": "vitest run --root ../.. packages/test-doubles"

@@ -1,0 +1,36 @@
+{
+  "name": "@demo/mock-providers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spec 00 §4.3 mock providers: the Lambda handlers, their store, the seed scripts, the construct, and local servers running the same handlers.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --root ../.. services/mock-providers",
+    "start": "tsx bin/start-local-mock-providers.ts",
+    "seed:dev": "tsx bin/seed-mock-provider-store.ts dev",
+    "seed:stub": "tsx bin/seed-mock-provider-store.ts stub",
+    "seed:test": "tsx bin/seed-mock-provider-store.ts test",
+    "seed:demo": "tsx bin/seed-mock-provider-store.ts demo"
+  },
+  "dependencies": {
+    "@aws-lambda-powertools/logger": "2.36.0",
+    "@aws-sdk/client-dynamodb": "3.1152.0",
+    "@aws-sdk/client-secrets-manager": "3.1152.0",
+    "@aws-sdk/lib-dynamodb": "3.1152.0",
+    "@demo/construct-contracts": "0.1.0",
+    "@demo/contracts": "0.1.0",
+    "@demo/test-doubles": "0.1.0",
+    "@types/aws-lambda": "8.10.164",
+    "aws-cdk-lib": "2.273.0",
+    "constructs": "10.8.1",
+    "ulid": "3.0.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "aws-sdk-client-mock": "4.1.0"
+  }
+}
