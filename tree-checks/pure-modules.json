@@ -1,7 +1,16 @@
 {
   "pureModuleDirectories": ["packages/contracts/src"],
+  "pureModuleFiles": [
+    "services/read/src/aggregate-etag.ts",
+    "services/read/src/record-merge.ts",
+    "services/read/src/provider-fan-out.ts",
+    "services/read/src/read-cache-policy.ts"
+  ],
   "forbiddenImports": [
-    { "patterns": ["@aws-sdk/*"], "reason": "Pure module: no AWS SDK (Spec 00 §2.4 check 2)." },
+    {
+      "patterns": ["@aws-sdk/*"],
+      "reason": "Pure module: no AWS SDK (Spec 00 §2.4 check 2)."
+    },
     {
       "patterns": ["aws-cdk-lib", "aws-cdk-lib/*"],
       "reason": "Pure module: no CDK (Spec 00 §2.4 check 2)."

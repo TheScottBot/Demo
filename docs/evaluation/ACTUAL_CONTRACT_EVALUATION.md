@@ -905,6 +905,70 @@ Batched for the Spec 02 Plan stage exit (datum 0.3). RD1 is stated in the five p
 - **RQ2** What becomes of the RU15 latency gate under CQ6. Blocks RE6's author gate.
 - **RQ3** The RU author values (RU1, RU2, RU4, RU5, RU7, RU10 to RU14). Block RE2 to RE5.
 
+### Answers, 18 October 2026
+
+Given by the author in the working session ("Go with recommendations"), recorded as given.
+
+| Item | Decision |
+|---|---|
+| RD1 | Spec 02 §9's recommendation: RE5 builds the cache switch, its synth guard and the cold start log, and no cache behaviour. RE7 stays unscheduled, so RU8 and RU9 stay unsettled and `read-cache-store.ts` is not created. |
+| RQ1 | RE6 becomes an automated suite: the read handler invoked directly with the shared event builder against the local mock provider servers (`startLocalMockProviders`), with RE6's seven checks. It runs locally and in CI; it is no longer an author gate. |
+| RQ2 | The RU15 latency gate is set aside under CQ6 and recorded as `IMPLEMENTATION_DEVIATIONS.md` entry 7; RU15 stays in the specification for a deployment. |
+| RQ3 | Appendix A as written: RU1 1,500 ms, RU2 2,500 ms, RU4 60 s, RU5 300 s, RU7 5 s, RU10 512 MB, RU11 5 s, RU12 100, RU13 2 in `demo`, RU14 as listed. RU12 is Appendix A's 100; the agent raised the burst arithmetic but made no recommendation of its own on it, and the note above stands for any later revision. |
+
+### Plan stage exit (Spec 02)
+
+Closed on 18 October 2026 for Spec 02: every RU value a read phase needs is read, run or decided. RU8 and RU9 stay unsettled because RE7, the only phase needing them, is unscheduled under RD1. RU3 and RU6 were run on Node.js v22.23.2 and are to be rerun on Node.js 24 once CQ5 is done.
+
+## RE1 Aggregate ETag and merge
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Spec 00 change made first
+
+`tree-checks/pure-modules.json` now takes `pureModuleFiles` beside `pureModuleDirectories`, listing the four files Spec 02 §2 names as pure (`aggregate-etag.ts`, `record-merge.ts`, `provider-fan-out.ts`, `read-cache-policy.ts`). Check 2 and ESLint both read it. Driven by two new tests in `tree-checks/test/pure-imports.test.ts`, which failed before the change; no earlier assertion was edited.
+
+### Work completed
+
+- `services/read` workspace.
+- `aggregate-etag.ts`: `formatAggregateEntityTag` and `parseAggregateEntityTag`, to the §4.2 grammar. Parsing checks the If-None-Match bound first, then refuses the wildcard, lists, weak validators, unquoted values, a wrong prefix, anything but canonical unpadded base64url, a body that is not a JSON object of strings, an empty object, a provider outside the routing table, a version outside the provider grammar, and any spelling other than the one the formatter writes. It encodes with the web standard `btoa` and `atob`, so the module needs nothing beyond the language.
+- `record-merge.ts`: `mergeProviderOutcomes`, a pure function of the outcomes, the routing table and the time. It keeps each ok provider to the sections it owns, counting the rest for `ProviderSectionIgnored`; names each section's source; takes the latest `updatedAt` among ok providers; returns one `SourceProvenance` per provider in routing table order; collects the providers' versions for the ETag; and reports §3.4's three conditions as written. Every source's `fetchedAt` is the merge time, the "current time" §4.1 names.
+
+Left to RE4, deliberately: whether to emit an ETag and when to answer 304, since those decide the response, which is the handler's. See the question below.
+
+### Tests first
+
+Both test files failed with `Cannot find module` before their source existed. One test of this phase was wrong when first run: it planted one extra base64url character as a length no encoder produces, but 27 characters is a length an encoder does produce (only a remainder of 1 over a multiple of 4 is impossible); it decoded to the JSON plus a NUL and was rightly refused as `json`. The test was corrected to plant three characters.
+
+| Planted regression | Result |
+|---|---|
+| ETag keys left unsorted | 2 tests failed |
+| non canonical ETags accepted | 2 failed |
+| lists not refused | 2 failed |
+| unowned sections kept | 1 failed |
+| `partial` set on any failure | 26 failed |
+| earliest `updatedAt` taken | 1 failed |
+| sources left in input order | 1 failed |
+
+Pure import check: a `node:fs` import planted in each of the two modules failed both check 2 and ESLint, and both passed once it was removed.
+
+Property based runs added to §2.4 check 6: the ETag round trip, the ETag parser on arbitrary text (never throwing, and accepting only what the formatter writes), and the merge on every status combination. All pass at 1,000 runs.
+
+### Reproduction report
+
+| Check | Result |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 36 files, 874 tests passed, at 100 and at 1,000 property runs |
+| Tests skipped | none |
+
+Done when: the suites pass, and the pure import check passes on both modules. Both hold on the agent's machine; complete once the author reproduces them.
+
+### Question for RE4, raised now so it is not lost
+
+To be asked in the five part form at RE4, the phase it blocks. §4.2 says an ETag is emitted only when every provider is `ok` or `not-modified`. Read literally, a record that one provider holds nothing of (that provider answers `not-found`, as provider-c does for `record-0006`) can never be given an ETag, and so never answered 304. Counting `not-found` as complete would allow it, but then a provider that held part of a record and now answers `not-found` must not let a conditional read answer 304 over the stale copy.
+
 # Spec 03 write path
 
 Plan stage not started.

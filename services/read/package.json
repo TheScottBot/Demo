@@ -1,0 +1,20 @@
+{
+  "name": "@demo/read",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spec 02 read path: GET /v1/records/{recordId}, provider fan-out, merge, aggregate ETag and the ReadPath construct.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --root ../.. services/read"
+  },
+  "dependencies": {
+    "@demo/contracts": "0.1.0"
+  },
+  "devDependencies": {
+    "@demo/test-doubles": "0.1.0"
+  }
+}

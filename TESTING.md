@@ -25,6 +25,7 @@ npm run synth
 | Contract package | `packages/contracts/test` | `npm test --workspace packages/contracts` | locally; CI jobs 5 and 6 |
 | Shared test doubles | `packages/test-doubles/test` | `npm test --workspace packages/test-doubles` | locally; CI jobs 5 and 6 |
 | Construct contracts and stubs | `packages/construct-contracts/test` | `npm test --workspace packages/construct-contracts` | locally; CI jobs 5 and 6 |
+| Read path | `services/read/test` | `npm test --workspace services/read` | locally; CI jobs 5 and 6 |
 | Mock providers | `services/mock-providers/test` | `npm test --workspace services/mock-providers` | locally; CI jobs 5 and 6 |
 | Synth assertions | `infra/test` | `npm test --workspace infra` | locally; CI jobs 5 and 6 |
 | Tree check logic | `tree-checks/test` | `npm test` | locally; CI jobs 5 and 6 |
@@ -53,7 +54,7 @@ Under CQ6 the mock providers run on this machine: `npm start --workspace service
 
 ## Property runs
 
-`vitest.setup.ts` sets fast-check's run count for the whole suite from `DEMO_PROPERTY_RUNS`, defaulting to 100; a value that is not a positive whole number fails the run. `tree-checks/test/property-run-configuration.test.ts` proves the count reaches fast-check. The parsers with properties are the command body, the provider response body and headers, and the correlation identifier (`packages/contracts/test/parser-properties.test.ts`). The aggregate ETag (Spec 02) and the queue message body (Spec 03) gain theirs in those streams.
+`vitest.setup.ts` sets fast-check's run count for the whole suite from `DEMO_PROPERTY_RUNS`, defaulting to 100; a value that is not a positive whole number fails the run. `tree-checks/test/property-run-configuration.test.ts` proves the count reaches fast-check. The parsers with properties are the command body, the provider response body and headers, and the correlation identifier (`packages/contracts/test/parser-properties.test.ts`). The aggregate ETag parser has its own (`services/read/test/aggregate-etag.test.ts`), as does the record merge. The queue message body (Spec 03) gains its in that stream.
 
 ## Memory and undefined behaviour analysis (datum 0.10)
 
@@ -73,10 +74,11 @@ Only the author can clear these, and the agent never claims one has passed (datu
 
 | Gate | Owner | State |
 |---|---|---|
-| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1, CE2, CE3, CE4, CE5 |
+| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1 to CE5 and RE1 |
 | See each CI job fail on a planted violation and pass, on GitHub | Spec 00 CE3 | outstanding: needs a push; proven locally only |
 | Install Node.js 24.22.0 locally (CQ5) | Spec 00 | outstanding; an action rather than a gate, listed so it is not lost |
 | The manual smoke check through the public API | Spec 01 EE5 | to be redefined under CQ6 in the Spec 01 Plan stage |
 | The deployed checks against the stubs | Spec 01 EE4 | to be redefined under CQ6 |
-| The deployed read checks, and the latency target RU15 | Spec 02 RE6 | to be redefined under CQ6 |
+| The deployed read checks | Spec 02 RE6 | no longer a gate: RQ1 makes RE6 an automated suite against the local mock providers |
+| The latency target RU15 | Spec 02 RE6 | set aside under CQ6 (RQ2; `IMPLEMENTATION_DEVIATIONS.md` entry 7) |
 | The deployed write checks, and resolving the `poison-` operation | Spec 03 WE9 | to be redefined under CQ6 |

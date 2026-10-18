@@ -12,6 +12,29 @@ describe('isPureModulePath', () => {
   });
 });
 
+// Added in Spec 02 RE1: Spec 02 §2 names pure files inside a directory that
+// also holds impure ones, so files can be listed one by one.
+describe('isPureModulePath for listed files', () => {
+  it('names each listed pure file, and not its impure neighbours', () => {
+    expect(isPureModulePath('services/read/src/aggregate-etag.ts')).toBe(true);
+    expect(isPureModulePath('services/read/src/record-merge.ts')).toBe(true);
+    expect(isPureModulePath('services/read/src/provider-fan-out.ts')).toBe(true);
+    expect(isPureModulePath('services/read/src/read-cache-policy.ts')).toBe(true);
+    expect(isPureModulePath('services/read/src/read-handler.ts')).toBe(false);
+    expect(isPureModulePath('services/read/src/adapters/http-read-adapter.ts')).toBe(false);
+    expect(isPureModulePath('services/read/src/aggregate-etag.ts.bak')).toBe(false);
+  });
+
+  it('finds a forbidden import in a listed file', () => {
+    expect(
+      findForbiddenImports(
+        'services/read/src/record-merge.ts',
+        "import { request } from 'node:http';",
+      ),
+    ).toHaveLength(1);
+  });
+});
+
 describe('findForbiddenImports', () => {
   it.each([
     ["import { DynamoDBClient } from '@aws-sdk/client-dynamodb';", '@aws-sdk/client-dynamodb'],

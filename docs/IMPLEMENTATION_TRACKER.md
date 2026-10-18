@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-Spec 00 is built up to CE6, which waits for the streams (RE5, WE8, EE3). Every stream can start once the author has reproduced CE1 to CE5: the Spec 01, 02 and 03 Plan stages, then EE1 to EE3, RE1 to RE5, and WE1, WE2, WE4, WE6 and WE7. The agent recommends a Plan stage next; Spec 02 or Spec 03 first, since their adapters are what the doubles and mock providers were built for.
+Spec 00 is built up to CE6, which waits for the streams (RE5, WE8, EE3). RE1 is built; RE2 (the read adapters) is next in Spec 02, then RE3 (fan-out). A question about ETags and `not-found` providers is noted for RE4 (the RE1 record). The Spec 01 and Spec 03 Plan stages have not started.
 
 ## Resuming work
 
@@ -38,8 +38,8 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Target runtime | Node.js 24, Lambda `nodejs24.x` on arm64 (CQ1) |
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
-| Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `infra` |
-| Suite | 34 files, 712 tests, and all seven tree checks passing on 18 October 2026 |
+| Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `infra` |
+| Suite | 36 files, 874 tests, and all seven tree checks passing on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
@@ -68,14 +68,14 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 | Phase | Status | Depends on | Note |
 |---|---|---|---|
-| Plan stage | in progress | | evidence gathered 18 October 2026; RD1, RQ1 to RQ3 open |
-| RE1 Aggregate ETag and merge | not started | CE1, CE2, CE5 | |
+| Plan stage | complete | | closed 18 October 2026; RU8 and RU9 left for RE7 |
+| RE1 Aggregate ETag and merge | awaiting reproduction | CE1, CE2, CE5 | `services/read`: `aggregate-etag.ts`, `record-merge.ts`, both proven pure; ETag emission and 304 rules left to RE4 |
 | RE2 Read adapters | not started | CE1, CE2, CE5 | use the msw doubles; see the `max-age` finding |
 | RE3 Fan-out | not started | CE1, CE2, CE5 | |
 | RE4 Read handler | not started | CE1, CE2, CE5 | CD1 freezes the contract after RE4 and WE2 |
 | RE5 ReadPath construct | not started | CE1, CE2, CE5 | |
-| RE6 Deployed checks against the mock providers | blocked | CE4, CE6 | local replacement under CQ6 |
-| RE7 Read cache | blocked | RD1 | not in Spec 00's delivery table |
+| RE6 Deployed checks against the mock providers | not started | RE4, CE4 | under RQ1, run locally against the local mock providers; no longer blocked on deployment |
+| RE7 Read cache | not scheduled | RD1 | RD1 leaves it unscheduled |
 
 ## Spec 03 write path
 
@@ -114,10 +114,10 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | ED1 Identity provider | open | EE2 |
 | ED2 Per tenant fairness | open | EE3's scope |
 | ED3 401 body | open | EE4's 401 assertions |
-| RD1 Enable the read cache | open | RE7; asked at the Spec 02 Plan stage exit |
-| RQ1 RE6 under CQ6 | open | RE6 |
-| RQ2 RU15 latency gate under CQ6 | open | RE6 author gate |
-| RQ3 RU author values | open | RE2 to RE5 |
+| RD1 Enable the read cache | answered | switch, synth guard and cold start log only; RE7 unscheduled |
+| RQ1 RE6 under CQ6 | answered | an automated suite against the local mock providers |
+| RQ2 RU15 latency gate under CQ6 | answered | set aside; deviation entry 7 |
+| RQ3 RU author values | answered | Appendix A as written, RU12 100 |
 | WD1 Applying commands after a provider outage | open | WE3, WE5 |
 | WD2 Canonical form for `requestHash` | open | Spec 03 intake |
 | WD3 Retention | open | Spec 03 |
@@ -125,7 +125,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 ## Open items for the author
 
-- Reproduce CE1 to CE5 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5 and RE1 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
 - Install Node.js 24.22.0 locally (CQ5).
 

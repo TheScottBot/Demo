@@ -12,9 +12,14 @@ export interface ForbiddenImportFinding {
   readonly reason: string;
 }
 
+// Spec 00 lists pure modules by directory; Spec 02 §2 names pure files that
+// share a directory with impure ones, so those are listed one by one.
 export function isPureModulePath(filePath: string): boolean {
-  return pureModuleConfiguration.pureModuleDirectories.some((pureDirectory) =>
-    filePath.startsWith(`${pureDirectory}/`),
+  return (
+    pureModuleConfiguration.pureModuleFiles.includes(filePath) ||
+    pureModuleConfiguration.pureModuleDirectories.some((pureDirectory) =>
+      filePath.startsWith(`${pureDirectory}/`),
+    )
   );
 }
 

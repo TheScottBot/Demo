@@ -13,9 +13,12 @@ const pureModuleConfiguration = JSON.parse(
   readFileSync(new URL('./tree-checks/pure-modules.json', import.meta.url), 'utf8'),
 );
 
-const pureModuleGlobs = pureModuleConfiguration.pureModuleDirectories.map(
-  (pureDirectory) => `${pureDirectory}/**/*.ts`,
-);
+const pureModuleGlobs = [
+  ...pureModuleConfiguration.pureModuleDirectories.map(
+    (pureDirectory) => `${pureDirectory}/**/*.ts`,
+  ),
+  ...pureModuleConfiguration.pureModuleFiles,
+];
 
 const importsForbiddenInPureModules = pureModuleConfiguration.forbiddenImports.map(
   (forbiddenImport) => ({ group: forbiddenImport.patterns, message: forbiddenImport.reason }),

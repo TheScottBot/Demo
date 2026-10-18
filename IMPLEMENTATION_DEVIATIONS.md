@@ -52,6 +52,14 @@ Each entry is history once its decision is given; a later change to it is a date
 - **Author's decision:** CQ1 and CQ5, 18 October 2026; `tsx` is recorded in the CE5 dependency records.
 - **Covering test:** the synth assertions that every function is `nodejs24.x`, and CI job 5's run on 24.21.0.
 
+## 7. The RU15 latency gate is set aside
+
+- **Rule:** Spec 02 RE6: the latency target RU15 (p95 below 800 ms for normal records at 20 requests a second for 2 minutes) is a further author gate.
+- **Done instead:** no latency gate. RE6 runs locally against the local mock providers (RQ1), where a measured latency would describe neither a Lambda cold start nor a real network, so a number taken there could mislead.
+- **Why:** nothing is deployed (entry 3).
+- **Author's decision:** RQ2, 18 October 2026: set aside; RU15 stays in Spec 02 for a deployment.
+- **Covering test:** none; the gate is absent by decision.
+
 ## Not deviations
 
 Recorded so they are not mistaken for one.
