@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-EE1 and EE2 are built and await reproduction. EE3 (throttling, CORS, logs and alarms) is next; `DemoApi` can now be wired into `infra` (the Spec 00 finding below). Specs 02 and 03 are built as far as they go (RE1 to RE6 and WE1 to WE9 await reproduction). CE6 waits on EE3. The contract is frozen at `@demo/contracts` 1.2.0, since EQ6.
+Spec 01 is built as far as the agent can take it: EE1 to EE3 await reproduction, EE4 is set aside, and EE5's `npm run smoke:local` waits on the author's own run. `DemoApi` is wired into `infra` on the demo user pool. Specs 02 and 03 are built as far as they go (RE1 to RE6 and WE1 to WE9 await reproduction). CE6 (wiring the real constructs) is unblocked and not started. The contract is frozen at `@demo/contracts` 1.2.0, since EQ6.
 
 ## Anonymity
 
@@ -55,7 +55,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | CE3 Tree wide checks | awaiting reproduction | CE1 | seven checks in `.github/workflows/tree-checks.yml`, each proven locally on a planted violation; seeing them run on GitHub needs a push (author gate); `TESTING.md` and `IMPLEMENTATION_DEVIATIONS.md` written |
 | CE4 Mock providers | awaiting reproduction | CE1, CE2 | `services/mock-providers`: handlers, DynamoDB store, seed scripts and construct, all synthesising; local servers run the same handler (`npm start --workspace services/mock-providers`); deployment and seeding replaced under CQ6 |
 | CE5 Construct contracts and stubs | awaiting reproduction | CE1 | `packages/construct-contracts` and `infra`: §3.11 interfaces, naming, stubs, Powertools adapter, one stack per stage; `DemoApi` wiring waits for EE1 (circular as drafted); amended in RE5 with the `./runtime` subpath and `activeTracing` |
-| CE6 Wiring real constructs | not started | RE5, WE8, EE3 | RE5 and WE8 are built; `ReadPath` and `WritePath` replace the stubs here; waits on EE3 |
+| CE6 Wiring real constructs | not started | RE5, WE8, EE3 | RE5, WE8 and EE3 are built; `ReadPath` and `WritePath` replace the stubs here; `DemoApi` is already wired |
 
 ## Spec 01 entry point
 
@@ -64,9 +64,9 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Plan stage | complete | | closed 18 October 2026; deviation entries 12 to 14 |
 | EE1 DemoApi against stubs | awaiting reproduction | CE5 | `services/entry`: `DemoApi`, its three routes from the contract, the JWT authoriser; the demo pool refused until EE2 |
 | EE2 Identity provider | awaiting reproduction | CE5 | `DemoUserPool`: Essentials, `V3_0` trigger, resource server `demo`, one client per tenant holding its own tenant scope (EQ3, EQ5), the §4.2 synth guard; contract 1.2.0 (EQ6) |
-| EE3 Throttling, CORS, logs and alarms | not started | CE5 | ED2 sets its scope |
+| EE3 Throttling, CORS, logs and alarms | awaiting reproduction | CE5 | route throttles, CORS from the contract headers, structured access logs, four alarms; `DemoApi` wired into `infra` |
 | EE4 Deployed checks against the stubs | set aside | EE1 to EE3, CE5 | until a stage is deployed (EQ1); deviation entry 13 |
-| EE5 Author smoke gate | not started | EE1 to EE3, RE6, WE9 | the author runs `npm run smoke:local` by hand (EQ2); deviation entry 14 |
+| EE5 Author smoke gate | awaiting author gate | EE1 to EE3, RE6, WE9 | `npm run smoke:local` is built; the author runs it by hand and records it in `TESTING.md` (EQ2); deviation entry 14 |
 
 ## Spec 02 read path
 
@@ -144,9 +144,11 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 ## Open items for the author
 
-- Reproduce CE1 to CE5, RE1 to RE6, WE1 to WE9, EE1 and EE2 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5, RE1 to RE6, WE1 to WE9 and EE1 to EE3 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
 - Install Node.js 24.22.0 locally (CQ5).
+- Run `npm run smoke:local` and record the result in `TESTING.md` (EE5).
+- Review the choices EE3 made under your delegated authority (EE3 record): the allowed origin `http://localhost:3000`, the access log group's name, and CE5's changed assertions.
 - Write `SECURITY.md` (Spec 01 §6) in your own words, or give them to the agent: that handlers trust gateway verified claims; the ED2 fairness limit; the ED3 401 body; what the demo user pool is and is not fit for.
 
 ## Findings awaiting their owners
@@ -156,7 +158,6 @@ Each is set out with its evidence and likely fix in the evaluation record.
 | Owner | Finding |
 |---|---|
 | Spec 00 CE2 | msw 3.0.3 let a request escape interception after a cancelled mocked body and a refused unmatched request (RE2 record); add a catch all network error handler to the doubles, raising the change to CE2's refusal test |
-| Spec 00 | wire `DemoApi` into `infra/lib/demo-platform.ts` (CQ9, EE1 record); EE2 has given it the demo pool |
 | Spec 00 CE6 | wire `MockProviders` and pass its connections to the read and write paths; that breaks the CE5 assertion of three functions per stack, to be raised with the author then |
 | Spec 00 §2.5 | `README.md`, `CHANGELOG.md`, `SECURITY.md` and `PRIVACY.md` have no owning phase |
 | Spec 01 | per route throttling needs L1 `CfnStage.routeSettings`; the exposed CORS headers cannot be derived from header direction alone |

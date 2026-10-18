@@ -82,10 +82,10 @@ Only the author can clear these, and the agent never claims one has passed (datu
 
 | Gate | Owner | State |
 |---|---|---|
-| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1 to CE5, RE1 to RE6, WE1 to WE9, EE1 and EE2 |
+| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1 to CE5, RE1 to RE6, WE1 to WE9 and EE1 to EE3 |
 | See each CI job fail on a planted violation and pass, on GitHub | Spec 00 CE3 | outstanding: needs a push; proven locally only |
 | Install Node.js 24.22.0 locally (CQ5) | Spec 00 | outstanding; an action rather than a gate, listed so it is not lost |
-| The manual smoke check | Spec 01 EE5 | under EQ2, the author runs `npm run smoke:local` by hand and records the result here; deviation entry 14 |
+| The manual smoke check | Spec 01 EE5 | under EQ2, the author runs `npm run smoke:local` by hand and records the result here; deviation entry 14. Built 18 October 2026; not yet run by the author |
 | The deployed checks against the stubs | Spec 01 EE4 | set aside until a stage is deployed (EQ1); deviation entry 13 |
 | The deployed read checks | Spec 02 RE6 | no longer a gate: RQ1 makes RE6 an automated suite, `infra/test/read.spec.ts`, against the local mock providers |
 | The latency target RU15 | Spec 02 RE6 | set aside under CQ6 (RQ2; `IMPLEMENTATION_DEVIATIONS.md` entry 7) |

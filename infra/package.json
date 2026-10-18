@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@demo/construct-contracts": "0.1.0",
+    "@demo/entry": "0.1.0",
     "aws-cdk-lib": "2.273.0",
     "constructs": "10.8.1"
   },

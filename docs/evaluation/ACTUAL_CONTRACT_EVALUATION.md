@@ -1079,6 +1079,121 @@ Each planted file was restored byte for byte.
 
 Done when: the synth suite and the trigger's unit tests pass. Both pass on the agent's machine; the phase is complete once the author reproduces them.
 
+## EE3 Throttling, CORS, logs and alarms
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17, while the author was away. Automated criteria met on the agent's machine; awaiting the author's reproduction. The author left this instruction, in their words: "Any decisions I give you authority to go with your suggestion." The choices this phase made under it are listed below, so the author can overturn any of them.
+
+### Assumptions verified
+
+- EU7, EU8, EU9 and EU11 to EU13: read or decided in the Plan stage.
+- Read for this phase from `apigateway/latest/developerguide/http-api-metrics.html`, retrieved 18 October 2026:
+  - The HTTP API metrics are `4xx`, `5xx`, `Count`, `Latency`, `IntegrationLatency` and `DataProcessed`.
+  - The route level dimensions are `ApiId`, `Method`, `Resource` and `Stage`, and they are sent only when detailed metrics are enabled.
+- Read as installed, `aws-cdk-lib` 2.273.0: `HttpApi` `corsPreflight`, `metricServerError`, `metricClientError` and `metricCount`; `CfnStage` `routeSettings` and `accessLogSettings`; `logs.MetricFilter` and `FilterPattern.stringValue`.
+- Found by the first synth: `CfnStage.routeSettings` is a free form map, and the CDK passes its keys through unconverted. Keys written in camelCase would reach the template as written, where CloudFormation names them `ThrottlingRateLimit`, `ThrottlingBurstLimit` and `DetailedMetricsEnabled`. The construct writes them as CloudFormation names them.
+- Unverified, since nothing is deployed (deviation entry 3): the value `Resource` takes for an HTTP API route. The read latency alarm uses the route's path, `/v1/records/{recordId}`. If that is wrong, the alarm sees no data and, with missing data not breaching, stays quiet; it never alarms falsely.
+
+### Work completed
+
+- `demo-api-settings.ts`: every tuning value from Appendix A in one place (§3): EU10's timeouts (moved there from EE1's constant), EU11's throttles, EU12 and EU13. The CORS header lists are chosen by name from the contract's `httpHeaders`.
+- `DemoApi`:
+  - §5.1: a rate and burst on each route, on the default stage's route settings: read 100 and 200, command 50 and 100, status 100 and 200. The read route also has detailed metrics on, for its latency alarm.
+  - §5.3: CORS with `corsAllowedOrigins`, the methods `GET`, `POST` and `OPTIONS`, the five allowed and five exposed headers of §5.3, and a maximum age of 600 seconds. A wildcard origin outside `dev` fails synth (`cors-wildcard-outside-dev`).
+  - §5.4: structured JSON access logs carrying exactly the request identifier, route key, status, response latency, integration latency, integration error message, authoriser error and the `tenant_id` claim. They go to the log group `demo-<stage>-api-access`, kept 14 days. The source IP address, the `sub` claim, every other header and every body are left out.
+  - §5.5: four alarms on `alarmTopic`, each with missing data not breaching:
+    - `demo-<stage>-api-5xx`: above 5 server errors in 5 minutes;
+    - `demo-<stage>-api-4xx-spike`: above 20 per cent of requests over 10 minutes, as `100 * clientErrors / requests`;
+    - `demo-<stage>-api-read-latency-p95`: p95 above 3,000 ms for 3 of 5 minutes, on the read route;
+    - `demo-<stage>-api-throttled`: above 50 in 5 minutes, from a metric filter on the access log matching status 429, in the family's `Demo/<stage>` namespace.
+
+### Spec 00 change: DemoApi wired into infra (CQ9)
+
+- `infra/lib/demo-platform.ts` builds `DemoApi` in every stage, on the demo user pool (ED1), with the stub functions' handlers and the stage's alarm topic. `infra` now depends on `@demo/entry`.
+- CE5's platform synth test changed with this wiring, in two places. It had asserted exactly three functions per stack, and that every function's environment holds the stub variables. The trigger is now a fourth function, with no environment beyond `NODE_OPTIONS`. So the test names the four functions, and holds each to its own variables. Three new assertions cover the wiring: the API, its routes and the pool in each stage; the allowed origin; and every alarm on the stage's topic.
+
+### Choices made under the author's delegated authority
+
+- **The allowed origins.** Every stage allows only `http://localhost:3000`. Nothing is deployed and no web client exists (CQ6), so no real origin can be named. A deployed stage names its own; §5.3 already refuses a wildcard outside `dev`.
+- **The log group's name.** `demo-<stage>-api-access`, by `demoResourceName`. No naming rule for log groups existed.
+- **CE5's assertions.** Changed as above, rather than kept, since the Spec 00 finding to wire `DemoApi` always meant the stack would hold more than the stubs.
+- **SECURITY.md.** Not written. Spec 01 §6 requires the author's own words, and delegated authority to take the agent's suggestions does not supply them. It stays an open item.
+
+### Tests first
+
+`demo-api-operations.test.ts` failed in all 14 tests before the construct changed. On the first build one failed: the route settings' keys (above). The platform synth test failed in its three changed tests before `infra` changed. The first full run then failed two of the wildcard origin tests, each timing out at the default 5 seconds while it bundled the stub functions, as two of EE1's had; each now allows 300 seconds.
+
+| Planted regression | Result |
+|---|---|
+| the command rate at 100 | 1 failed |
+| camelCase route settings | 1 failed |
+| no detailed metrics on the read route | 1 failed |
+| the wildcard allowed everywhere | 3 failed |
+| a header left off the allowed list | 1 failed |
+| every response header exposed | 1 failed |
+| OPTIONS not allowed | 1 failed |
+| the maximum age at 60 | 1 failed |
+| the source IP logged | 2 failed |
+| the sub claim logged | 2 failed |
+| the authoriser error left out | 1 failed |
+| logs kept a month | 1 failed |
+| no access log | 3 failed |
+| an alarm without its action | 1 failed |
+| missing data breaching | 1 failed |
+| the 5xx threshold at 10 | 1 failed |
+| the spike as a count | 1 failed |
+| the spike over 5 minutes | 1 failed |
+| latency p99 | 1 failed |
+| latency 5 of 5 | 1 failed |
+| latency on every route | 1 failed |
+| throttled from 4xx | 1 failed |
+| the throttled threshold at 5 | 1 failed |
+| `infra`: DemoApi on an external issuer | 8 failed |
+| `infra`: a second origin allowed | 4 failed |
+| `infra`: the API on another alarm topic | 8 failed |
+
+Each planted file was restored byte for byte.
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 75 files, 1,378 tests passed, at 100 and at 1,000 property runs, once two timeouts were lengthened |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the synth suite passes. It does on the agent's machine; complete once the author reproduces it.
+
+## EE5 Author smoke gate
+
+Phase worked on 18 October 2026, under EQ2 (deviation entry 14).
+
+- `infra/bin/smoke-local.ts`, run by `npm run smoke:local`. It starts the mock providers as local servers, then makes one read through the real read function's bundled entry point, configured as `ReadPath` configures it. It then makes one command through the real intake handler, against the version that read returned, and one status poll through the real status handler, once the relay and worker have run (`createLocalWritePath`, WE9). Each step prints its status and outcome, and nothing else: no key, token or subject. The script exits 1 if any step fails.
+- Secrets Manager is the one stand in, as in RE6: it hands back each provider's synthetic key.
+- The agent ran it once, on 18 October 2026, to see that it works:
+
+```text
+read: 200, partial false, sources provider-a ok, provider-b ok, provider-c ok
+command: 202, operation ACCEPTED
+status: 200, operation SUCCEEDED
+smoke: passed
+```
+
+- It has no tests of its own (Spec 01 EE5); the typecheck and lint cover it.
+
+Done when: the author has run it by hand and recorded the result in `TESTING.md`. This is an author gate: the agent's run above is not the author's.
+
+## Spec 01 close
+
+Every Spec 01 phase the agent can do is done, on 18 October 2026:
+
+- EE1 to EE3: built, awaiting the author's reproduction.
+- EE4: set aside until a stage is deployed (EQ1, deviation entry 13).
+- EE5: `npm run smoke:local` is built; it waits on the author's own run (EQ2, deviation entry 14).
+
+Still the author's: `SECURITY.md` in the author's own words (§6), and reproducing EE1 to EE3. CE6, wiring the real constructs, is a Spec 00 phase and was not started.
+
 # Spec 02 read path
 
 Plan stage worked on 18 October 2026, after reading Spec 02 Draft 2 once, top to bottom. Status: evidence gathered; author decisions outstanding (Decisions still needing the author, at the end of this section).

@@ -1,5 +1,7 @@
 // Spec 00 CE5: synth assertions that each stage holds the alarm topic and the
 // constructs Spec 00 §2.3 assigns it. Until CE6 every stage holds the stubs.
+// Since Spec 01 EE2, DemoApi is wired too (CQ9), on the demo user pool (ED1);
+// its trigger is the one function beside the stubs.
 import { App } from 'aws-cdk-lib';
 import { Match, Template } from 'aws-cdk-lib/assertions';
 import { beforeAll, describe, expect, it } from 'vitest';
@@ -48,7 +50,18 @@ describe.each(stages)('the %s stack', (stage) => {
 
   it('holds the three stub functions on Node.js 24, arm64', () => {
     const template = templatesByStage[stage];
-    template?.resourceCountIs('AWS::Lambda::Function', 3);
+    const functionNames = Object.values(template?.findResources('AWS::Lambda::Function') ?? {})
+      .map(
+        (lambdaFunction) =>
+          (lambdaFunction as { Properties: { FunctionName: string } }).Properties.FunctionName,
+      )
+      .sort();
+    expect(functionNames).toEqual([
+      `demo-${stage}-pre-token-generation`,
+      `demo-${stage}-stub-command`,
+      `demo-${stage}-stub-read`,
+      `demo-${stage}-stub-status`,
+    ]);
     for (const stubFunction of stubFunctions) {
       template?.hasResourceProperties('AWS::Lambda::Function', {
         FunctionName: `demo-${stage}-${stubFunction.component}`,
@@ -67,13 +80,42 @@ describe.each(stages)('the %s stack', (stage) => {
   it('puts no secret in an environment variable (Spec 00 §2.3)', () => {
     const functions = templatesByStage[stage]?.findResources('AWS::Lambda::Function') ?? {};
     for (const lambdaFunction of Object.values(functions)) {
-      const variables = (
-        lambdaFunction as { Properties: { Environment: { Variables: Record<string, unknown> } } }
-      ).Properties.Environment.Variables;
-      expect(Object.keys(variables).sort()).toEqual([
-        'DEMO_STAGE',
-        'DEMO_STUB_ROUTE',
-        'NODE_OPTIONS',
+      const { FunctionName: functionName, Environment: environment } = (
+        lambdaFunction as {
+          Properties: { FunctionName: string; Environment: { Variables: Record<string, unknown> } };
+        }
+      ).Properties;
+      expect(Object.keys(environment.Variables).sort()).toEqual(
+        functionName.endsWith('-pre-token-generation')
+          ? ['NODE_OPTIONS']
+          : ['DEMO_STAGE', 'DEMO_STUB_ROUTE', 'NODE_OPTIONS'],
+      );
+    }
+  });
+
+  it('holds DemoApi on the demo user pool, its routes on the stub functions (CQ9, ED1)', () => {
+    const template = templatesByStage[stage];
+    template?.resourceCountIs('AWS::ApiGatewayV2::Api', 1);
+    template?.hasResourceProperties('AWS::ApiGatewayV2::Api', { Name: `demo-${stage}-api` });
+    template?.resourceCountIs('AWS::ApiGatewayV2::Route', 3);
+    template?.resourceCountIs('AWS::Cognito::UserPool', 1);
+    template?.hasResourceProperties('AWS::Cognito::UserPool', {
+      UserPoolName: `demo-${stage}-users`,
+    });
+  });
+
+  it('allows only the local client origin, since nothing is deployed and no web client exists', () => {
+    templatesByStage[stage]?.hasResourceProperties('AWS::ApiGatewayV2::Api', {
+      CorsConfiguration: Match.objectLike({ AllowOrigins: ['http://localhost:3000'] }),
+    });
+  });
+
+  it('sends every alarm to the stage topic', () => {
+    const template = templatesByStage[stage];
+    const [topicLogicalId] = Object.keys(template?.findResources('AWS::SNS::Topic') ?? {});
+    for (const alarm of Object.values(template?.findResources('AWS::CloudWatch::Alarm') ?? {})) {
+      expect((alarm as { Properties: { AlarmActions: unknown } }).Properties.AlarmActions).toEqual([
+        { Ref: topicLogicalId },
       ]);
     }
   });

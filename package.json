@@ -20,7 +20,8 @@
     "check:prose": "tsx tree-checks/bin/check-prose.ts",
     "check:pure-imports": "tsx tree-checks/bin/check-pure-imports.ts",
     "check:single-definition": "tsx tree-checks/bin/check-single-definition.ts",
-    "synth": "npm run synth --workspace infra"
+    "synth": "npm run synth --workspace infra",
+    "smoke:local": "tsx infra/bin/smoke-local.ts"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
