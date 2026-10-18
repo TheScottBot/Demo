@@ -1467,3 +1467,84 @@ Done when: the suite passes against `aws-sdk-client-mock`, and the pure import c
 | Spec 00 CE5 | `demo-nodejs-function.test.ts` failed once, on the first full run after a clean `npm ci`, and passed on three runs after; its test bundles with esbuild, which a cold cache and a loaded machine slow | the author's call: a longer timeout, or leave it and watch for a repeat |
 | Spec 03 WE5 | §6.3 saves `lastErrorReason` on a retryable outcome without a state change, but §4.4's five store functions have no update outside a transition | WE5 adds that update to the store, raised then as a change to §4.4's list |
 | Spec 03 WE6 | WD4 is answered (`records:write`); `packages/contracts/CONTRACT.md` still records the status route's scope as open | WE6 records the scope where the route is defined |
+
+## WE2 Intake
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Assumptions verified
+
+- WU1: unsettled, recorded as unverified (`IMPLEMENTATION_DEVIATIONS.md` entry 10); intake reads both body forms (WQ4).
+- WU2: relied on through WE1's `createOperation`, which reports an existing idempotency entry from the cancelled transaction.
+- WD2: answered; `request-hash.ts` is the pure function.
+
+### Work completed
+
+- `request-hash.ts` (pure, listed in `tree-checks/pure-modules.json`): the SHA-256, in hexadecimal, of `{ body, tenantId }` as JSON with keys sorted at every depth, list order kept and no whitespace. The mock providers' version (CQ7.6) uses the same canonical form; the two are kept apart deliberately, with a comment saying why, since one is a provider wire rule and the other intake's own (datum 0.7).
+- `operation-status-mapping.ts`: `toOperationStatus`, §9 step 4's mapping, checked against `OperationStatusSchema`; WE6 will use it too.
+- `handlers/intake-handler.ts`: `createIntakeHandler`, in §3.1's order.
+  - `records:write`; then `Content-Type`: `application/json`, optionally with `charset=utf-8`, in any case; any other value is refused naming `headers.Content-Type`. Spec 00 §3.4 says only that it must be `application/json`. A UTF-8 charset parameter is accepted because the bound and every grammar are stated over UTF-8, and a client naming it sends the same bytes.
+  - `Idempotency-Key`: missing, malformed or too long answers `idempotency-key-required`.
+  - The body (WQ4): plain text goes to `parseCommandRequestBody`, which bounds its bytes before parsing; base64 text is refused beyond 87,384 characters before decoding, then must be strict base64, then strict UTF-8.
+  - The command: `parseCommandRequestBody`'s strict schema. The provider comes from `owningProviderForSection`.
+  - The operation is minted, journalled and answered 202 with `Location`, `Cache-Control: no-store` and the `ACCEPTED` status. A replay with the same hash answers the original operation's current status with `Idempotent-Replayed: true`; a different hash answers 422; any other failure 500.
+  - `CommandsAccepted`, `IdempotentReplay` and `IdempotencyKeyReused` are counted, and `operationId` is bound to the log once known.
+- Intake calls no provider: it is given no adapter.
+
+### Tests first
+
+`request-hash.test.ts` and `intake-handler.test.ts` failed with `Cannot find module` before their source existed. The request hash has two fast-check properties: key order at any depth never changes the hash, and any change of value, compared as JSON reads it back, always does.
+
+Two of the first expectations were the agent's own errors, corrected against the contract: notes belong to provider-b, not provider-c; and an unknown key is reported at its enclosing object (path `''`), by the contract's design, so a caller's key name is never echoed.
+
+The first round of plants found four gaps, each closed:
+
+| Plant that survived | Why | What changed |
+|---|---|---|
+| decoded bytes not bounded | `parseCommandRequestBody` already holds the decoded text to the same bound | the duplicate check removed; one layer owns the bound (datum 0.7) |
+| command type routing check removed | `CommandRequestSchema` already refuses any command type but the section's own | the duplicate check removed, for the same reason |
+| base64 not checked strictly | the test inputs were not JSON however decoded | tests added: base64 with its padding removed, and with a line break, each of which a lenient decoder turns into a valid command |
+| invalid UTF-8 replaced, not refused | as above | a test added: an invalid byte inside a string value, which replacement would hide |
+| hash taken over a fixed tenant | no test read a tenant-2 operation's hash | the tenant isolation test now checks it |
+
+| Planted regression | Result |
+|---|---|
+| read scope accepted for writes | 28 tests failed |
+| `Content-Type` not checked | 4 failed |
+| any charset accepted | 1 failed, once replanted: the first plant's search text, escaped in the plant file, matched nothing, and the runner said so |
+| `Idempotency-Key` not validated | 3 failed |
+| encoded length not bounded before decoding | 1 failed |
+| encoded bound off by one | 1 failed |
+| base64 body not decoded | 1 failed |
+| base64 not checked strictly | 2 failed |
+| invalid UTF-8 replaced, not refused | 1 failed |
+| replayed body not compared | 1 failed |
+| replay not marked | 1 failed |
+| `Location` naming the wrong route | 2 failed |
+| `no-store` missing | 2 failed |
+| hash taken over a fixed tenant | 1 failed |
+| hash keys not sorted | 2 failed |
+| hash ignoring the tenant | 2 failed |
+| an AWS SDK import in `request-hash.ts` | check 2 failed: `Pure module: no AWS SDK` |
+
+Each planted file was restored byte for byte.
+
+### Finding: a doubled path in the contract
+
+`invalidFieldsFromZodError` in `packages/contracts/src/invalid-fields.ts` (CE1) reports an unknown section as `section.section`. Run on zod 4.6.7: an `invalid_union` issue for a discriminated union already carries the discriminator in its `path` (`["section"]`, and `["outer","section"]` when nested), and `pathForIssue` appends it again. The problem document names a field that does not exist, though it still carries no input value. CE1's own test of an unknown section checks only that it is refused. WE2's test holds that path by its start until the owner fixes it, and says so. Likely fix: append the discriminator only when the path does not already end with it, with CE1's test extended to the exact path. It belongs to Spec 00, and is raised before CD1 freezes the contract.
+
+### Line endings
+
+After the author's WE1 commit, two files in `packages/contracts` were on disk with CRLF endings, which `format:check` flagged. Prettier rewrote them to LF; `git ls-files --eol` shows LF in the index and working tree and `git diff` shows no change. With `core.autocrlf` on, a commit can leave files this way locally; CI checks out LF.
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 51 files, 1,071 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the suite passes. It does on the agent's machine; complete once the author reproduces it. With RE4 also passing, CD1's condition for freezing the contract is met on the agent's machine; the freeze itself is the author's (datum 0.11).

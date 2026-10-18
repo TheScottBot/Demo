@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-WE1 is built and awaits reproduction. WE2 (intake) is next in Spec 03: CD1 freezes the contract once it passes against the doubles. WE4, WE6 and WE7 are also ready. Spec 02 is built as far as it goes (RE1 to RE6 await reproduction). The Spec 01 Plan stage has not started.
+WE1 and WE2 are built and await reproduction. With RE4 and WE2 passing against the doubles, CD1's condition for freezing the contract is met on the agent's machine; the freeze is the author's, and a CE1 defect (a doubled path in problem documents, WE2 record) is raised first. WE3 to WE7 are ready. Spec 02 is built as far as it goes (RE1 to RE6 await reproduction). The Spec 01 Plan stage has not started.
 
 ## Anonymity
 
@@ -43,7 +43,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
 | Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `services/write`, `infra` |
-| Suite | 49 files, 1,035 tests, and all seven tree checks passing on 18 October 2026 |
+| Suite | 51 files, 1,071 tests, and all seven tree checks passing on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
@@ -87,7 +87,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 |---|---|---|---|
 | Plan stage | complete | | closed 18 October 2026; deviation entries 9 (WD1) and 10 (WQ2) |
 | WE1 State machine and journal store | awaiting reproduction | CE1, CE2, CE5 | `services/write`: the pure state machine, the journal store, the `CommandJournal` table construct, and a fake table for later phases |
-| WE2 Intake | not started | CE1, CE2, CE5 | CD1 freezes the contract after RE4 and WE2 |
+| WE2 Intake | awaiting reproduction | CE1, CE2, CE5 | `intake-handler.ts`, `request-hash.ts` (pure), `operation-status-mapping.ts`; meets CD1's condition for the freeze |
 | WE3 Relay and sweep | not started | CE1, CE2, CE5 | `relay-failures` is a standard queue (WU7) |
 | WE4 Write adapters | not started | CE1, CE2, CE5 | |
 | WE5 Worker | not started | CE1, CE2, CE5 | carries entry 9's covering tests |
@@ -100,7 +100,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 | Decision | State | Answer or what it blocks |
 |---|---|---|
-| CD1 Contract freeze | answered | freeze after RE4 and WE2 pass against the doubles |
+| CD1 Contract freeze | answered, freeze due | freeze after RE4 and WE2 pass against the doubles; both pass on the agent's machine; the freeze itself is the author's |
 | CD2 Module B | answered | not applied |
 | CD3 Who deploys | answered | nobody: the family runs locally (CQ6) |
 | CD4 Licence and holder | answered | MIT, `TheScottBot` |
@@ -135,7 +135,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 ## Open items for the author
 
-- Reproduce CE1 to CE5, RE1 to RE6 and WE1 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5, RE1 to RE6, WE1 and WE2 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
 - Install Node.js 24.22.0 locally (CQ5).
 
@@ -153,3 +153,4 @@ Each is set out with its evidence and likely fix in the evaluation record.
 | Spec 02 | a timed out fetch rejects with `TimeoutError`; adapters must send `Demo-Tenant-Id` (CQ7.1); the four pure files need listing in the tree checks at RE1 (the earlier `max-age` finding is withdrawn) |
 | Spec 03 | no fault prefix makes a write time out; a timed out fetch rejects with `TimeoutError`; WE5 must add a store update for `lastErrorReason` outside a transition; WE6 records the status route scope (WD4) |
 | Spec 00 CE5 | `demo-nodejs-function.test.ts` failed once on the first run after a clean install, then passed three times (WE1 record) |
+| Spec 00 CE1 | `invalidFieldsFromZodError` reports an unknown section as `section.section`: zod 4.6.7 already puts the discriminator in the issue path, and the mapping appends it again (WE2 record) |
