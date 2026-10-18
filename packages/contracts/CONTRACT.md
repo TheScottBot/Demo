@@ -4,7 +4,14 @@ This directory is the owner of every definition in Spec 00 §3 and §4 (datum 0.
 
 ## Status
 
-**Provisional.** Under CD1 the contract freezes once Spec 02 RE4 and Spec 03 WE2 pass against the doubles. Until then it is freely revisable, and every change is recorded below with its reason (datum 0.11).
+**Frozen at version 1.0.0, 18 October 2026** (CD1). The author froze it once Spec 02 RE4 and Spec 03 WE2 passed against the doubles, in the author's words: "Fix the CE1 doubled path as a Spec 00 change, tests first, then freeze the contract under CD1."
+
+From the freeze, datum 0.11 applies in full: nothing here is renamed, aliased, normalised, reinterpreted or silently improved, no required value gains a default, and no unknown field is accepted. A change is a version decision for the author, raised as a Spec 00 change:
+
+- one that breaks a consumer raises the major version of `@demo/contracts` and carries migration notes, in the section below;
+- one that breaks nothing (a new export, a corrected defect that no consumer relied on) raises the minor or patch version.
+
+Every change is still recorded in the change record, dated, with its reason. The record above the freeze line is the history of how the contract settled into its shape (datum 0.11).
 
 ## Where each definition lives
 
@@ -70,6 +77,12 @@ Each entry is a choice CE1 made where the specification left room, dated, with i
 | 2026-10-18 | `PublicRouteNameSchema`, `publicRouteNamed` | Short names for the three routes (`read-record`, `submit-command`, `read-operation`), moved here from `packages/test-doubles` in CE5 | The stub functions and the event builder both need them; one definition (datum 0.7) |
 | 2026-10-18 | `httpHeaders.stubEcho` | `Demo-Stub-Echo`, a response header sent only by the stub functions in the stub stage | Named by Spec 00 CE5; every header name lives here |
 | 2026-10-18 | `operationDetailField` | Exported: the detail field each operation state carries, the rule `OperationStatusSchema` already applied | Spec 03 WE1: the journal sets and clears details by the same rule, not a copy (datum 0.7) |
+| 2026-10-18 | `invalidFieldsFromZodError` | An unknown discriminator is named by its own path once (`section`, not `section.section`) | Defect found in Spec 03 WE2: zod 4.6.7 already ends the issue's path with the discriminator, and the mapping appended it again. Fixed before the freeze, test first |
+| 2026-10-18 | freeze | Version 1.0.0; changes from here are version decisions | CD1, by the author |
+
+## Migration notes
+
+None: 1.0.0 is the first frozen version.
 
 ## Open questions for the author
 

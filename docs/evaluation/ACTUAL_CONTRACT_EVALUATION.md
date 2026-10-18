@@ -1548,3 +1548,32 @@ After the author's WE1 commit, two files in `packages/contracts` were on disk wi
 | Tests skipped | none |
 
 Done when: the suite passes. It does on the agent's machine; complete once the author reproduces it. With RE4 also passing, CD1's condition for freezing the contract is met on the agent's machine; the freeze itself is the author's (datum 0.11).
+
+## Spec 00 change: the doubled path, and the CD1 freeze
+
+Worked on 18 October 2026, after WE2, at the author's instruction: "Fix the CE1 doubled path as a Spec 00 change, tests first, then freeze the contract under CD1."
+
+### The fix
+
+- Test first: `packages/contracts/test/invalid-fields.test.ts` gained a test that an unknown discriminator is named once, at the top level (`section`) and nested (`command.section`). It failed with `section.section` before the fix.
+- Run on zod 4.6.7: an unknown discriminator's issue path already ends with the discriminator whether the value is missing, of another type, `null` or unknown; an input that is not an object gives `invalid_type` at the root instead. So `pathForIssue` needed no special case, and the one that appended the discriminator was removed.
+- Planted: the old branch put back fails that test (1 failed).
+- WE2's intake test still holds the path by its start; its assertion is left as it is (datum 0.4), and its comment now points to the contract test that pins the exact path.
+
+### The freeze
+
+- `packages/contracts/CONTRACT.md` records the contract as frozen at version 1.0.0, in the author's words, with the rule for every later change: a version decision for the author, a major version and migration notes for anything that breaks a consumer.
+- `@demo/contracts` moved from 0.1.0 to 1.0.0, and every workspace that depends on it names 1.0.0.
+- Spec 00 itself still says the contract is provisional until CD1 freezes it, which is now so; the specification is the author's document and is not edited.
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 51 files, 1,072 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+After the author's WE2 commit, six files were on disk with CRLF endings; Prettier rewrote them to LF, with no change in content (`git ls-files --eol` shows LF in the index).

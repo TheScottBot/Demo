@@ -28,6 +28,28 @@ const validCandidate = {
 };
 
 describe('invalidFieldsFromZodError', () => {
+  // WE2 finding: zod already puts the discriminator in an invalid_union
+  // issue's path, so the field is named once, at the top level and nested.
+  it('names an unknown discriminator by its own path, once', () => {
+    const variantSchema = z.discriminatedUnion('section', [
+      z.strictObject({ section: z.literal('summary') }),
+      z.strictObject({ section: z.literal('notes') }),
+    ]);
+    const topLevel = variantSchema.safeParse({ section: plantedSecretValue });
+    const nested = z.strictObject({ command: variantSchema }).safeParse({
+      command: { section: plantedSecretValue },
+    });
+    if (topLevel.success || nested.success) {
+      throw new Error('expected both candidates to be refused');
+    }
+    expect(invalidFieldsFromZodError(topLevel.error, { section: plantedSecretValue })).toEqual([
+      { path: 'section', reason: 'no-matching-variant' },
+    ]);
+    expect(
+      invalidFieldsFromZodError(nested.error, { command: { section: plantedSecretValue } }),
+    ).toEqual([{ path: 'command.section', reason: 'no-matching-variant' }]);
+  });
+
   it('reports an unknown key at its enclosing path, never by its own name', () => {
     const invalidFields = invalidFieldsFor({
       ...validCandidate,

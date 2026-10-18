@@ -322,8 +322,9 @@ describe('the command (§3.1 steps 4 and 5)', () => {
     [
       'an unknown section',
       JSON.stringify({ ...summaryCommand, section: 'billing' }),
-      // Spec 00 CE1 reports this path as section.section: a finding for its
-      // owner (WE2 record). Only the start is held here until it is fixed.
+      // Held by its start since WE2, when CE1 reported section.section. Fixed
+      // as a Spec 00 change the same day; CE1's invalid-fields test now pins
+      // the exact path.
       { path: 'section', reason: 'no-matching-variant', pathPrefixOnly: true },
     ],
     [

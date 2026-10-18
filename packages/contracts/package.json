@@ -1,6 +1,6 @@
 {
   "name": "@demo/contracts",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Spec 00 shared contracts: schemas, types, bounds, headers, errors, routing table and authentication context. Pure: no AWS, no I/O.",

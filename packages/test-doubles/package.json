@@ -13,7 +13,7 @@
     "test": "vitest run --root ../.. packages/test-doubles"
   },
   "dependencies": {
-    "@demo/contracts": "0.1.0",
+    "@demo/contracts": "1.0.0",
     "@types/aws-lambda": "8.10.164",
     "msw": "3.0.3",
     "ulid": "3.0.2"

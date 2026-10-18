@@ -93,14 +93,10 @@ function joinPath(rootPath: string, issuePath: readonly PropertyKey[]): string {
 
 // The path of an unknown key is its enclosing object: the key's own name came
 // from the caller. Every other path segment is a schema key or a list index.
+// zod 4.6.7 already ends an unknown discriminator's path with the
+// discriminator itself, whether the value is missing or wrong (run, 18
+// October 2026), so no issue needs its path extended.
 function pathForIssue(issue: ZodIssue, rootPath: string): string {
-  if (
-    issue.code === 'invalid_union' &&
-    'discriminator' in issue &&
-    typeof issue.discriminator === 'string'
-  ) {
-    return joinPath(rootPath, [...issue.path, issue.discriminator]);
-  }
   return joinPath(rootPath, issue.path);
 }
 

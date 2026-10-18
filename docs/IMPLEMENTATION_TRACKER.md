@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-WE1 and WE2 are built and await reproduction. With RE4 and WE2 passing against the doubles, CD1's condition for freezing the contract is met on the agent's machine; the freeze is the author's, and a CE1 defect (a doubled path in problem documents, WE2 record) is raised first. WE3 to WE7 are ready. Spec 02 is built as far as it goes (RE1 to RE6 await reproduction). The Spec 01 Plan stage has not started.
+The contract is frozen at `@demo/contracts` 1.0.0 (CD1, 18 October 2026); every change to it is now a version decision for the author. WE1 and WE2 are built and await reproduction; WE3 to WE7 are ready. Spec 02 is built as far as it goes (RE1 to RE6 await reproduction). The Spec 01 Plan stage has not started.
 
 ## Anonymity
 
@@ -43,14 +43,14 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
 | Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `services/write`, `infra` |
-| Suite | 51 files, 1,071 tests, and all seven tree checks passing on 18 October 2026 |
+| Suite | 51 files, 1,072 tests, and all seven tree checks passing on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
 | Phase | Status | Depends on | Note |
 |---|---|---|---|
 | Plan stage | complete | | closed 18 October 2026; CU4 left unsettled by design under CQ6 |
-| CE1 Contract package | awaiting reproduction | Plan stage | `packages/contracts`; amended in CE2 for the `sub` bound, `no-store` and the CQ7 wire rules |
+| CE1 Contract package | awaiting reproduction | Plan stage | `packages/contracts`; amended in CE2 for the `sub` bound, `no-store` and the CQ7 wire rules; frozen at 1.0.0 (CD1) after the doubled path fix |
 | CE2 Shared test doubles | awaiting reproduction | CE1 | `packages/test-doubles`: event builder, synthetic records, provider simulation, msw doubles |
 | CE3 Tree wide checks | awaiting reproduction | CE1 | seven checks in `.github/workflows/tree-checks.yml`, each proven locally on a planted violation; seeing them run on GitHub needs a push (author gate); `TESTING.md` and `IMPLEMENTATION_DEVIATIONS.md` written |
 | CE4 Mock providers | awaiting reproduction | CE1, CE2 | `services/mock-providers`: handlers, DynamoDB store, seed scripts and construct, all synthesising; local servers run the same handler (`npm start --workspace services/mock-providers`); deployment and seeding replaced under CQ6 |
@@ -100,7 +100,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 | Decision | State | Answer or what it blocks |
 |---|---|---|
-| CD1 Contract freeze | answered, freeze due | freeze after RE4 and WE2 pass against the doubles; both pass on the agent's machine; the freeze itself is the author's |
+| CD1 Contract freeze | answered, done | frozen at `@demo/contracts` 1.0.0 on 18 October 2026, by the author; see `packages/contracts/CONTRACT.md` |
 | CD2 Module B | answered | not applied |
 | CD3 Who deploys | answered | nobody: the family runs locally (CQ6) |
 | CD4 Licence and holder | answered | MIT, `TheScottBot` |
@@ -153,4 +153,3 @@ Each is set out with its evidence and likely fix in the evaluation record.
 | Spec 02 | a timed out fetch rejects with `TimeoutError`; adapters must send `Demo-Tenant-Id` (CQ7.1); the four pure files need listing in the tree checks at RE1 (the earlier `max-age` finding is withdrawn) |
 | Spec 03 | no fault prefix makes a write time out; a timed out fetch rejects with `TimeoutError`; WE5 must add a store update for `lastErrorReason` outside a transition; WE6 records the status route scope (WD4) |
 | Spec 00 CE5 | `demo-nodejs-function.test.ts` failed once on the first run after a clean install, then passed three times (WE1 record) |
-| Spec 00 CE1 | `invalidFieldsFromZodError` reports an unknown section as `section.section`: zod 4.6.7 already puts the discriminator in the issue path, and the mapping appends it again (WE2 record) |
