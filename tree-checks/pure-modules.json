@@ -4,7 +4,8 @@
     "services/read/src/aggregate-etag.ts",
     "services/read/src/record-merge.ts",
     "services/read/src/provider-fan-out.ts",
-    "services/read/src/read-cache-policy.ts"
+    "services/read/src/read-cache-policy.ts",
+    "services/write/src/operation-state-machine.ts"
   ],
   "forbiddenImports": [
     {
