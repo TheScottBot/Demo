@@ -5,6 +5,7 @@ import {
   owningProviderForSection,
   publicRoutes,
   scopeNames,
+  scopeResourceServerIdentifier,
   sectionRoutingTable,
   sectionsOwnedByProvider,
 } from '../src/index';
@@ -110,5 +111,10 @@ describe('the public routes', () => {
 
   it('name the two scopes', () => {
     expect(scopeNames).toEqual({ recordsRead: 'records:read', recordsWrite: 'records:write' });
+  });
+
+  // Contract 1.2.0, EQ6: the identifier Spec 01's resource server carries.
+  it('name the resource server that issues them', () => {
+    expect(scopeResourceServerIdentifier).toBe('demo');
   });
 });

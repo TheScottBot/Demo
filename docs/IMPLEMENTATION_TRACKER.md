@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-EE1 is built and awaits reproduction. EE2 (the demo user pool, ED1 and EQ3) is next, then EE3; `DemoApi` is wired into `infra` once EE2 gives it an identity provider. Specs 02 and 03 are built as far as they go (RE1 to RE6 and WE1 to WE9 await reproduction). CE6 waits on EE3. The contract is frozen at `@demo/contracts` 1.1.0.
+EE1 and EE2 are built and await reproduction. EE3 (throttling, CORS, logs and alarms) is next; `DemoApi` can now be wired into `infra` (the Spec 00 finding below). Specs 02 and 03 are built as far as they go (RE1 to RE6 and WE1 to WE9 await reproduction). CE6 waits on EE3. The contract is frozen at `@demo/contracts` 1.2.0, since EQ6.
 
 ## Anonymity
 
@@ -63,7 +63,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 |---|---|---|---|
 | Plan stage | complete | | closed 18 October 2026; deviation entries 12 to 14 |
 | EE1 DemoApi against stubs | awaiting reproduction | CE5 | `services/entry`: `DemoApi`, its three routes from the contract, the JWT authoriser; the demo pool refused until EE2 |
-| EE2 Identity provider | not started | CE5 | the demo pool on Essentials with a `V3_0` trigger (ED1); one app client per tenant (EQ3) |
+| EE2 Identity provider | awaiting reproduction | CE5 | `DemoUserPool`: Essentials, `V3_0` trigger, resource server `demo`, one client per tenant holding its own tenant scope (EQ3, EQ5), the §4.2 synth guard; contract 1.2.0 (EQ6) |
 | EE3 Throttling, CORS, logs and alarms | not started | CE5 | ED2 sets its scope |
 | EE4 Deployed checks against the stubs | set aside | EE1 to EE3, CE5 | until a stage is deployed (EQ1); deviation entry 13 |
 | EE5 Author smoke gate | not started | EE1 to EE3, RE6, WE9 | the author runs `npm run smoke:local` by hand (EQ2); deviation entry 14 |
@@ -100,7 +100,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 | Decision | State | Answer or what it blocks |
 |---|---|---|
-| CD1 Contract freeze | answered, done | frozen at `@demo/contracts` 1.0.0 on 18 October 2026, by the author, and at 1.1.0 since WQ8; see `packages/contracts/CONTRACT.md` |
+| CD1 Contract freeze | answered, done | frozen at `@demo/contracts` 1.0.0 on 18 October 2026, by the author; 1.1.0 since WQ8, 1.2.0 since EQ6; see `packages/contracts/CONTRACT.md` |
 | CD2 Module B | answered | not applied |
 | CD3 Who deploys | answered | nobody: the family runs locally (CQ6) |
 | CD4 Licence and holder | answered | MIT, `TheScottBot` |
@@ -122,6 +122,8 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | EQ2 EE5 under CQ6 | answered | `npm run smoke:local`, run by the author; deviation entry 14 |
 | EQ3 The tenant of a client credentials token | answered | one app client per tenant, mapped by client identifier |
 | EQ4 EU author values | answered | Appendix A as written |
+| EQ5 The tenant without a client table | answered | one tenant scope per tenant, each client allowed its own; the mapping reads and suppresses it |
+| EQ6 Prefixed Cognito scopes | answered | accept both forms; released as `@demo/contracts` 1.2.0 |
 | RD1 Enable the read cache | answered | switch, synth guard and cold start log only; RE7 unscheduled |
 | RQ1 RE6 under CQ6 | answered | an automated suite against the local mock providers |
 | RQ2 RU15 latency gate under CQ6 | answered | set aside; deviation entry 7 |
@@ -142,9 +144,10 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 ## Open items for the author
 
-- Reproduce CE1 to CE5, RE1 to RE6, WE1 to WE9 and EE1 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5, RE1 to RE6, WE1 to WE9, EE1 and EE2 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
 - Install Node.js 24.22.0 locally (CQ5).
+- Write `SECURITY.md` (Spec 01 §6) in your own words, or give them to the agent: that handlers trust gateway verified claims; the ED2 fairness limit; the ED3 401 body; what the demo user pool is and is not fit for.
 
 ## Findings awaiting their owners
 
@@ -153,10 +156,10 @@ Each is set out with its evidence and likely fix in the evaluation record.
 | Owner | Finding |
 |---|---|
 | Spec 00 CE2 | msw 3.0.3 let a request escape interception after a cancelled mocked body and a refused unmatched request (RE2 record); add a catch all network error handler to the doubles, raising the change to CE2's refusal test |
-| Spec 00 | wire `DemoApi` into `infra/lib/demo-platform.ts` once EE2 gives it an identity provider (CQ9, EE1 record) |
+| Spec 00 | wire `DemoApi` into `infra/lib/demo-platform.ts` (CQ9, EE1 record); EE2 has given it the demo pool |
 | Spec 00 CE6 | wire `MockProviders` and pass its connections to the read and write paths; that breaks the CE5 assertion of three functions per stack, to be raised with the author then |
 | Spec 00 §2.5 | `README.md`, `CHANGELOG.md`, `SECURITY.md` and `PRIVACY.md` have no owning phase |
-| Spec 01 | per route throttling needs L1 `CfnStage.routeSettings`; the exposed CORS headers cannot be derived from header direction alone; the audience check for Cognito tokens |
+| Spec 01 | per route throttling needs L1 `CfnStage.routeSettings`; the exposed CORS headers cannot be derived from header direction alone |
 | Spec 02 | a timed out fetch rejects with `TimeoutError`; adapters must send `Demo-Tenant-Id` (CQ7.1); the four pure files need listing in the tree checks at RE1 (the earlier `max-age` finding is withdrawn) |
 | Spec 03 | `OperatorAction` from an operator's terminal is printed, not ingested by CloudWatch (WE7 record); WE9's ordering row needs each command written against the version the last leaves (WE5 record); §4.4 lists five store exports where there are now seven; §11 lacks `ProviderRetryAfterIgnored` |
 | Spec 00 CE5 | `demo-nodejs-function.test.ts` failed once on the first run after a clean install, then passed three times (WE1 record) |

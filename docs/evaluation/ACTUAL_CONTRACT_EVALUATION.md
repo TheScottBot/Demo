@@ -967,6 +967,118 @@ Each planted file was restored byte for byte.
 
 Done when: the synth suite passes and lint is clean. Both hold on the agent's machine; complete once the author reproduces them.
 
+## EE2 Identity provider
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction. Two questions came up and were answered in the session (EQ5, EQ6); EQ6 released the contract as 1.2.0.
+
+### Assumptions verified
+
+- EU6, reread for this phase from `cognito/latest/developerguide/user-pool-lambda-pre-token-generation.html`, retrieved 18 October 2026:
+  - A `V3_0` event reaches the trigger for client credentials tokens (trigger source `TokenGeneration_ClientCredentials`), on the Essentials and Plus plans only.
+  - The request carries `scopes`, the scopes the app client is allowed to issue.
+  - The response's `accessTokenGeneration` takes `claimsToAddOrOverride` (any claim not in the token schema, so `tenant_id`), and `scopesToSuppress`.
+  - A custom scope is written as the resource server identifier, a slash and the scope name. The page's example adds `solar-system-data/asteroids.add`, and `cognito-user-pools-define-resource-servers.html` gives the format.
+- Read from `cognito-user-pools-define-resource-servers.html`: a client that requests a scope it is not allowed fails authentication, and a client that requests none receives all the scopes it is allowed.
+- Read as installed, `aws-cdk-lib` 2.273.0 `aws-cognito`:
+  - `FeaturePlan`, `LambdaVersion` and `UserPool.addTrigger` with a version.
+  - `StringAttribute`, `ResourceServerScope`, `OAuthScope.resourceServer`, `addResourceServer`, `addClient`, `addDomain`, and `CfnUserPoolUser`.
+  - The pool's `lambdaConfig` is derived at synth time, so the §4.2 guard resolves it in a validation rather than reading it when the construct runs.
+- Found by the first synth: a client with no auth flows set leaves `ExplicitAuthFlows` out of the template, and Cognito then allows its default user sign in flows. The construct sets refresh alone.
+- Unverified, since nothing is deployed (deviation entry 3). Each outcome is safe:
+  - The form a custom scope takes in the request's `scopes`. The mapping reads only the full form, `demo/tenant:<tenant>`. If Cognito sent the bare name, every client credentials token would be refused for want of a tenant, never issued with the wrong tenant.
+  - Whether the domain prefix `demo-<stage>-users` is free in the region.
+
+### Questions raised and answered in the session
+
+- **EQ5** How the trigger learns a client's tenant without a table of client identifiers. EQ3 chose one app client per tenant, mapped by client identifier.
+  - Why open: handing the trigger the clients' identifiers makes a CloudFormation cycle, the trigger, then the client, then the pool, then the trigger. An experiment confirmed it: the CDK's validation reported "Circular Dependencies for resource Trigger", followed by the trigger's logical identifier.
+  - Options: (a) one tenant scope per tenant on the resource server, each client allowed only its own, with the mapping reading the tenant from the granted tenant scope and suppressing it; (b) a lookup at run time from the trigger to the pool's clients; (c) a fixed client table written after deployment.
+  - Trade offs: (a) needs nothing at run time and no table, and Cognito enforces which client holds which scope. (b) adds an AWS call and permission to every token. (c) needs a manual step after every deployment.
+  - Recommendation: (a).
+  - Answer, in the author's words: "Tenant scope (Recommended)".
+- **EQ6** Cognito writes the custom scopes as `demo/records:read` and `demo/records:write`, while the handlers require `records:read` and `records:write` (Spec 00 §3.2).
+  - Why open: the token and the contract would never agree, so every handler would answer 403.
+  - Options: (a) the trigger swaps the prefixed scopes for the bare names, with no contract change, though whether Cognito accepts an added scope that no resource server defines stays unverified; (b) rename the contract's scopes to the prefixed form, a breaking version; (c) `readAuthenticationContext` also accepts the prefixed form, widening the frozen contract.
+  - Trade offs: (a) changes nothing frozen, but rests on unverified behaviour. (b) breaks every consumer. (c) is a version decision, but rests only on the documented format.
+  - Recommendation: (a).
+  - Answer, in the author's words: "Accept both forms" (option (c)).
+
+### Contract 1.2.0 (EQ6)
+
+- Test first: five new cases in `packages/contracts/test/authentication-context.test.ts` and one in `routing.test.ts`. Three failed before the change: the prefixed scopes as a string and as a list, and the missing identifier. The five cases that keep other prefixed names as they are passed both before and after.
+- `scopeResourceServerIdentifier` is `demo`. `readAuthenticationContext` reads exactly `demo/records:read` and `demo/records:write` as the contract scopes. Every other name keeps its form and grants nothing: another server's prefix, a longer name, a doubled prefix, an empty prefix.
+- Every workspace now names `@demo/contracts` 1.2.0. `CONTRACT.md` records the change and its migration note. It is a minor version, since no token the handlers accepted before is now refused.
+
+### Work completed
+
+- `token-claim-mapping.ts`, listed as a pure module (Spec 01 §4.2):
+  - A client credentials token takes `tenant_id` from its single `demo/tenant:<tenant>` scope, and that scope is suppressed.
+  - A user's token takes `tenant_id` from `custom:tenant_id`.
+  - A token is refused, by a reason alone (CD5), in each of these cases: no tenant scope, two tenant scopes, or a tenant outside the grammar; a user's token holding a tenant scope; a user without the attribute, or with one outside the grammar.
+- `handlers/pre-token-generation-entry.ts`: puts the mapping's result in the `V3_0` response. It reads no configuration and logs nothing. A refusal rejects, so Cognito issues no token.
+- `demo-user-pool-construct.ts`, `DemoUserPool`:
+  - The pool `demo-<stage>-users`, on Essentials, with self sign up off and an immutable `tenant_id` attribute of 1 to 64 characters.
+  - The trigger `demo-<stage>-pre-token-generation` on `V3_0`, and a domain for the token endpoint.
+  - The resource server `demo`, with `records:read`, `records:write`, `tenant:tenant-1` and `tenant:tenant-2`.
+  - One client per tenant, `demo-<stage>-client-<tenant>`, with a secret, client credentials only, refresh as its only auth flow, and both records scopes plus its own tenant scope.
+  - Two synthetic users, `synthetic-user-tenant-1` and `synthetic-user-tenant-2`, in `dev` and `stub` only. They are sent no message and have no password.
+- `requireTenantClaimTrigger`: the §4.2 synth guard. Synth fails when the pool has no pre token generation trigger, when its event is not `V3_0`, or when its plan is not Essentials or Plus.
+- `DemoApi` builds `DemoUserPool` when ED1's demo pool is configured. The authoriser's issuer is the pool and its audiences are the clients' identifiers, since Cognito access tokens carry `client_id` and no `aud` (CU4).
+- Not done here:
+  - `DemoApi` is still not wired into `infra`; that is the Spec 00 finding, now unblocked.
+  - `SECURITY.md` needs the author's own words (Spec 01 §6). The only words given so far are "Accept all (Recommended)", so it is not written.
+
+### Tests first
+
+Each new test file failed with `Cannot find module` before its source existed. EE1's test that refused the demo pool failed with `demo-user-pool-not-built`; EE2 replaced it, since this phase builds what EE1 refused. Two tests then failed on the first build:
+
+- the trigger threw its refusal instead of rejecting;
+- the clients' default auth flows (above).
+
+One plant passed the suite at first: removing the construct's call to `requireTenantClaimTrigger`. The planted pools tested the guard, but nothing tested that `DemoUserPool` applies it to its own pool. A test now changes the built pool's plan to Lite and expects synth to fail; planted again, the regression fails it.
+
+| Planted regression | Result |
+|---|---|
+| the Lite plan | 1 failed |
+| self sign up on | 1 failed |
+| the tenant attribute mutable | 1 failed |
+| the trigger on V2_0 | 1 failed |
+| the construct's own synth guard skipped | not caught at first; caught (1 failed) once the test below was added |
+| the guard accepting any version | 1 failed |
+| no domain | 1 failed |
+| another resource server identifier | 1 failed |
+| a tenant scope left off the server | 1 failed |
+| every client allowed every tenant scope | 2 failed |
+| no client secret | 2 failed |
+| default auth flows kept | 1 failed |
+| synthetic users in every stage | 2 failed |
+| an invitation sent | 2 failed |
+| one audience only | 2 failed |
+| the tenant scope not suppressed | 2 failed |
+| the first of two tenant scopes taken | 1 failed |
+| the tenant taken unchecked | 4 failed |
+| a bare tenant scope accepted | 1 failed |
+| a user token allowed a tenant scope | 1 failed |
+| the refusal carrying the input | 1 failed |
+| the trigger answering nothing | 1 failed |
+| the API ignoring the pool audiences | 1 failed |
+| the prefixed scope not read | 2 failed |
+| any prefix read as the scope | 5 failed |
+
+Each planted file was restored byte for byte.
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 74 files, 1,352 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the synth suite and the trigger's unit tests pass. Both pass on the agent's machine; the phase is complete once the author reproduces them.
+
 # Spec 02 read path
 
 Plan stage worked on 18 October 2026, after reading Spec 02 Draft 2 once, top to bottom. Status: evidence gathered; author decisions outstanding (Decisions still needing the author, at the end of this section).

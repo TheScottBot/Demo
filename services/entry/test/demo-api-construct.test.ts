@@ -180,9 +180,23 @@ describe('the JWT authoriser (§4.1)', () => {
     }
   });
 
-  it('leaves the demo user pool to EE2, refusing it until then', () => {
-    expect(() => synthesise('dev', { identityProvider: { kind: 'demo-user-pool' } })).toThrow(
-      'demo-user-pool-not-built',
+  // EE1 refused the demo pool until EE2 built it; EE2 replaced that test with
+  // this one.
+  it('takes its issuer and audiences from the demo user pool when ED1 chooses it', () => {
+    const pooled = synthesise('dev', { identityProvider: { kind: 'demo-user-pool' } }).template;
+    pooled.resourceCountIs('AWS::Cognito::UserPool', 1);
+    const [poolLogicalId] = Object.keys(pooled.findResources('AWS::Cognito::UserPool'));
+    const clientLogicalIds = Object.keys(pooled.findResources('AWS::Cognito::UserPoolClient'));
+    const [authorizer] = Object.values(
+      pooled.findResources('AWS::ApiGatewayV2::Authorizer'),
+    ) as Resource[];
+    const jwtConfiguration = authorizer?.Properties['JwtConfiguration'] as {
+      Issuer: unknown;
+      Audience: unknown[];
+    };
+    expect(JSON.stringify(jwtConfiguration.Issuer)).toContain(String(poolLogicalId));
+    expect(jwtConfiguration.Audience).toEqual(
+      clientLogicalIds.map((clientLogicalId) => ({ Ref: clientLogicalId })),
     );
     // Each synthesis bundles the stub functions, which is slow under the full suite.
   }, 300_000);

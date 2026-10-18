@@ -2,7 +2,7 @@ import type { APIGatewayProxyEventV2WithJWTAuthorizer } from 'aws-lambda';
 import { authenticationClaimBounds, contractBounds } from './bounds';
 import { DemoError } from './errors';
 import { TenantIdentifierSchema, scopeNamePattern } from './grammars';
-import type { ScopeName } from './routing';
+import { scopeNames, scopeResourceServerIdentifier, type ScopeName } from './routing';
 
 // Spec 00 §3.5. The gateway verifies the token (Spec 01); handlers trust the
 // claims it passes and never verify the token again. They still bound and
@@ -46,11 +46,20 @@ function readScopes(scopeClaim: unknown): string[] {
   return refuseClaim(scopeClaim === undefined ? 'scope-claim-missing' : 'scope-claim-wrong-type');
 }
 
+// Contract 1.2.0, EQ6: exactly the resource server form of a contract scope
+// is read as that scope; any other name, prefixed or not, is kept as it is.
+const contractScopeByResourceServerForm: ReadonlyMap<string, ScopeName> = new Map(
+  Object.values(scopeNames).map((scopeName) => [
+    `${scopeResourceServerIdentifier}/${scopeName}`,
+    scopeName,
+  ]),
+);
+
 function checkedScopeName(scopeName: unknown): string {
   if (typeof scopeName !== 'string' || !scopeNamePattern.test(scopeName)) {
     refuseClaim('scope-name-outside-grammar');
   }
-  return scopeName;
+  return contractScopeByResourceServerForm.get(scopeName) ?? scopeName;
 }
 
 function childObject(parent: unknown, key: string): Readonly<Record<string, unknown>> | undefined {

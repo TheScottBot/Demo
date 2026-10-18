@@ -88,6 +88,12 @@ export const scopeNames = {
 
 export type ScopeName = (typeof scopeNames)[keyof typeof scopeNames];
 
+// Contract 1.2.0, EQ6: Cognito issues a custom scope as its resource server's
+// identifier, a slash and the scope name. Spec 01's demo pool names its
+// resource server this, and readAuthenticationContext reads that form of the
+// two scopes above as the scopes themselves.
+export const scopeResourceServerIdentifier = 'demo';
+
 export type RouteScopeRule =
   | { readonly kind: 'scope'; readonly requiredScope: ScopeName }
   // Used in 1.0.0 while Spec 03 WD4 was open. No route has used it since 1.1.0;

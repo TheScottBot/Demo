@@ -13,6 +13,7 @@ import {
   aws_lambda as lambda,
 } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { DemoUserPool } from './demo-user-pool-construct';
 
 // Spec 01 §2 to §4: the single public API. It holds no runtime code (§1):
 // the gateway verifies tokens, and the handlers Specs 02 and 03 own do the
@@ -37,11 +38,11 @@ export class DemoApi extends Construct implements DemoApiOutputs {
 
   constructor(scope: Construct, constructId: string, properties: DemoApiProperties) {
     super(scope, constructId);
-    if (properties.identityProvider.kind === 'demo-user-pool') {
-      // ED1 chose the demo pool; EE2 builds it, so until then it is refused
-      // rather than wired to a placeholder issuer.
-      throw new Error('demo-user-pool-not-built: Spec 01 EE2 builds the demo user pool');
-    }
+    // ED1: the demo pool (§4.2), or an external issuer's own settings.
+    const issuer =
+      properties.identityProvider.kind === 'demo-user-pool'
+        ? new DemoUserPool(this, 'DemoUserPool', { stage: properties.stage })
+        : properties.identityProvider;
 
     const httpApi = new apigatewayv2.HttpApi(this, 'HttpApi', {
       apiName: demoResourceName(properties.stage, 'api'),
@@ -67,14 +68,10 @@ export class DemoApi extends Construct implements DemoApiOutputs {
     // §4.1: the Authorization header, the issuer and audiences ED1 sets, and
     // no route scopes, so a missing scope is requireScope's to answer with a
     // problem document.
-    const jwtAuthorizer = new authorizers.HttpJwtAuthorizer(
-      'JwtAuthorizer',
-      properties.identityProvider.issuerUrl,
-      {
-        jwtAudience: [...properties.identityProvider.audiences],
-        identitySource: [`$request.header.${httpHeaders.authorization.wireName}`],
-      },
-    );
+    const jwtAuthorizer = new authorizers.HttpJwtAuthorizer('JwtAuthorizer', issuer.issuerUrl, {
+      jwtAudience: [...issuer.audiences],
+      identitySource: [`$request.header.${httpHeaders.authorization.wireName}`],
+    });
 
     const handlerFor: Record<PublicRoute['handlerOwner'], lambda.IFunction> = {
       'spec-02-read-handler': properties.readHandler,

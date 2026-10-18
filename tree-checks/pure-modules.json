@@ -9,7 +9,8 @@
     "services/write/src/request-hash.ts",
     "services/write/src/message-group.ts",
     "services/write/src/retry-backoff.ts",
-    "services/write/src/operator/dead-letter-decisions.ts"
+    "services/write/src/operator/dead-letter-decisions.ts",
+    "services/entry/src/token-claim-mapping.ts"
   ],
   "forbiddenImports": [
     {

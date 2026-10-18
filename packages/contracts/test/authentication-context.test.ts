@@ -35,6 +35,38 @@ describe('readAuthenticationContext', () => {
     expect(readAuthenticationContext(event).scopes).toEqual(['records:read']);
   });
 
+  // Contract 1.2.0, EQ6: Cognito issues a custom scope as the resource server
+  // identifier, a slash and the scope name, so that form of the two contract
+  // scopes is read as the scope itself.
+  it('reads the resource server form of the contract scopes as the scopes themselves', () => {
+    const event = verifiedClaimsEvent({
+      claims: { ...defaultVerifiedClaims(), scope: 'demo/records:read demo/records:write' },
+    });
+    expect(readAuthenticationContext(event).scopes).toEqual(['records:read', 'records:write']);
+  });
+
+  it('reads the resource server form in a list too', () => {
+    const event = verifiedClaimsEvent({
+      claims: { ...defaultVerifiedClaims(), scope: ['demo/records:write'] },
+    });
+    expect(readAuthenticationContext(event).scopes).toEqual(['records:write']);
+  });
+
+  it.each([
+    ['another resource server', 'other/records:read'],
+    ['a scope that only starts with a contract scope', 'demo/records:readx'],
+    ['a doubled prefix', 'demo/demo/records:read'],
+    ['a scope outside the contract', 'demo/tenant-1'],
+    ['an empty identifier', '/records:read'],
+  ])('leaves %s as it is, so it grants nothing', (_caseName, scopeName) => {
+    const event = verifiedClaimsEvent({ claims: { ...defaultVerifiedClaims(), scope: scopeName } });
+    const authenticationContext = readAuthenticationContext(event);
+    expect(authenticationContext.scopes).toEqual([scopeName]);
+    expectDemoError(() => {
+      requireScope(authenticationContext, 'records:read');
+    }, 'forbidden');
+  });
+
   it('reads an empty scope claim as no scopes, leaving the refusal to requireScope', () => {
     const event = verifiedClaimsEvent({ claims: { ...defaultVerifiedClaims(), scope: '' } });
     expect(readAuthenticationContext(event).scopes).toEqual([]);
