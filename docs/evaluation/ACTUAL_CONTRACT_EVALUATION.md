@@ -663,6 +663,82 @@ Done when: `cdk synth` succeeds for every stage. It does on the agent's machine;
 | Spec 00 CE4 | the stacks carry no provider connections yet | CE4 supplies them |
 | Spec 00 | Powertools reported `cold_start: false` on the first local invocation of the bundle; it reads the Lambda environment to decide, which a local run lacks | observation only; recheck if a local cold start check is ever needed |
 
+## CE3 Tree wide checks
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met locally; the CI runs on GitHub, and the author's reproduction, are outstanding.
+
+### Sources read
+
+| Item | Source | Read |
+|---|---|---|
+| `actions/checkout` | GitHub API, latest release | v7.0.1, 2026-07-20, commit `3d3c42e5aac5ba805825da76410c181273ba90b1`; `action.yml` at that tag: runs on `node24`, takes `persist-credentials` |
+| `actions/setup-node` | GitHub API, latest release | v7.1.0, 2026-10-08, commit `949feb2413d6458794dcd2491c4babbbce0c15c1`; `action.yml` at that tag: takes `node-version`, `node-version-file`, `cache` |
+| fast-check global configuration | `fast-check` 4.10.2, `lib/cjs/fast-check.d.ts` | `configureGlobal(parameters)` and `readConfigureGlobal()`, with `numRuns` |
+| Node.js analysis options | `node --help`, v22.23.2 | see `TESTING.md` |
+
+### Assumptions verified
+
+- The CI runner needs nothing but the Node.js toolchain: every job runs `npm ci` and an npm script, and `cdk synth` uses the local esbuild, so no Docker and no AWS credentials. This is by construction; no GitHub run has confirmed it yet.
+
+### Work completed
+
+- `tree-checks/`: the decisions of checks 1 to 3 in pure, tested modules (`src/prose-scan.ts`, `src/pure-imports.ts`, `src/single-definition.ts`) and thin command line wrappers (`bin/`) that list the files git would commit, read them and print what the modules return (datum Part 3).
+- `tree-checks/pure-modules.json`: the one list of pure modules and forbidden imports, read by check 2 and by `eslint.config.js`.
+- Check 3's mechanism, a Plan stage choice under §2.4: the tokens are collected from `packages/contracts` itself (header names, bounds of 1,000 and over, route paths and the problem type prefix, every exported name, every vocabulary of two or more values); every other non test source is parsed with the TypeScript compiler and searched for a redeclaration. A contract value used through its type is not one; a list of several values from one vocabulary is. A deliberate duplication is allowed by a `single-definition:` comment carrying its reason (datum 0.7).
+- `vitest.setup.ts`: the property run count from `DEMO_PROPERTY_RUNS`.
+- `.github/workflows/tree-checks.yml`: one job per check; `.node-version` (24.22.0).
+- `TESTING.md` and `IMPLEMENTATION_DEVIATIONS.md`, including the check 6 entry §2.4 requires.
+- Two small duplications found while building check 3 and removed: the stub handler's literal 501 now comes from `errorCodeDefinitions`, and the event builder's scope string from `scopeNames`.
+
+### Tests first
+
+The four tree check test files failed with `Cannot find module` before their source existed. The first run of check 1 over the real tree found 109 findings, all of them real:
+
+- the scan's own word list and test inputs (fixed by storing the list reversed and building every planted value from parts);
+- two literal dash characters in `prose-scan.ts`, where Unicode escapes had been intended: an editing step had turned the escapes for U+2013 and U+2014 into the characters themselves. Every other file was checked for the same and was clean;
+- two test inputs from earlier phases holding a literal double hyphen (a component name in `resource-naming.test.ts` and a language tag in `sections.test.ts`), rebuilt from parts with byte for byte the same value. These are earlier phase tests (datum 0.4); their assertions are unchanged.
+
+Lint then found five issues in this phase's own code, each fixed.
+
+Each check, seen to fail on a planted violation and then pass, by `prove-tree-checks.mjs` in scratch, restoring each file byte for byte:
+
+| Check | Planted violation | Planted run | Clean run |
+|---|---|---|---|
+| 1 Prose | an em dash in a new Markdown file | exit 1, 1 finding | exit 0 |
+| 2 Pure imports | `@aws-sdk/client-s3` imported in `packages/contracts/src` | exit 1, 1 finding | exit 0 |
+| 3 Single definition | the bound `65_536` declared in `packages/test-doubles/src` | exit 1, 1 finding | exit 0 |
+| 4 Typecheck | a string assigned to a number | exit 1, TS2322 | exit 0 |
+| 4 Lint | a one letter name | exit 1, `id-length` | exit 0 |
+| 5 Full suite | a failing test | exit 1, 1 failed | exit 0 |
+| 6 Property runs | `parseEntityTag` throwing on any value holding a tilde, at 1,000 runs | exit 1, failed only in `parser-properties.test.ts`: no example based test holds a tilde | exit 0 |
+| 7 Synth | an alarm topic component outside the naming grammar | exit 1, `component-outside-grammar` | exit 0 |
+
+### Reproduction report
+
+| Item | Value |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 (target 24; CQ5) |
+
+Commands: those in `TESTING.md`, Running everything locally, and `DEMO_PROPERTY_RUNS=1000 npm test`.
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Checks 1 to 3 | exit 0; 104 files scanned by check 1 |
+| Typecheck, lint, format | exit 0, 0 warnings |
+| Full suite | 28 files, 666 tests passed, at 100 and at 1,000 property runs |
+| Synth | all four stacks |
+| Tests skipped | none |
+
+Done when: each check has a recorded failing run and a passing run. Locally, it has. The same on GitHub needs a push, which is the author's, and the author's reproduction is outstanding.
+
+### Findings
+
+| For | Finding | Likely fix |
+|---|---|---|
+| Spec 00 §2.5 | `README.md`, `CHANGELOG.md`, `SECURITY.md` and `PRIVACY.md` still have no owning phase (`TESTING.md` and `IMPLEMENTATION_DEVIATIONS.md` now exist) | assign them to a Spec 00 phase |
+| Specs 02, 03 | the aggregate ETag and queue message parsers need their own fast-check properties for check 6 | written in RE1 and WE5 |
+| Spec 00 | check 3 does not search for bounds below 1,000 | left to review, as `TESTING.md` says |
+
 # Spec 01 entry point
 
 Plan stage not started.

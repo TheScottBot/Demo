@@ -1,37 +1,25 @@
 // Lint is run with --max-warnings 0, so every rule here is effectively an error
 // (datum 0.10: warnings as errors).
+import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 import eslintJavaScript from '@eslint/js';
 import typescriptEslint from 'typescript-eslint';
 
 // Modules that every specification lists as pure (datum 0.10, Spec 00 §2.4
-// check 2). They must build and test with nothing but the Node.js toolchain.
-const pureModuleGlobs = ['packages/contracts/src/**/*.ts'];
+// check 2), and the imports they may not make. The one list is
+// tree-checks/pure-modules.json, which the continuous integration check reads
+// too; lint gives the same answer earlier, in the editor.
+const pureModuleConfiguration = JSON.parse(
+  readFileSync(new URL('./tree-checks/pure-modules.json', import.meta.url), 'utf8'),
+);
 
-// Spec 00 §2.4 check 2 names exactly these imports as forbidden in a pure module.
-const importsForbiddenInPureModules = [
-  { group: ['@aws-sdk/*'], message: 'Pure module: no AWS SDK (Spec 00 §2.4 check 2).' },
-  {
-    group: ['aws-cdk-lib', 'aws-cdk-lib/*'],
-    message: 'Pure module: no CDK (Spec 00 §2.4 check 2).',
-  },
-  {
-    group: ['@aws-lambda-powertools/*'],
-    message: 'Pure module: no Powertools; take the CQ3 interfaces instead (Spec 00 §2.4 check 2).',
-  },
-  {
-    group: ['node:fs', 'node:fs/*', 'fs', 'fs/*'],
-    message: 'Pure module: no filesystem (Spec 00 §2.4 check 2).',
-  },
-  { group: ['node:net', 'net'], message: 'Pure module: no sockets (Spec 00 §2.4 check 2).' },
-  {
-    group: ['node:http', 'http'],
-    message: 'Pure module: no HTTP server or client (Spec 00 §2.4 check 2).',
-  },
-  {
-    group: ['node:child_process', 'child_process'],
-    message: 'Pure module: no child processes (Spec 00 §2.4 check 2).',
-  },
-];
+const pureModuleGlobs = pureModuleConfiguration.pureModuleDirectories.map(
+  (pureDirectory) => `${pureDirectory}/**/*.ts`,
+);
+
+const importsForbiddenInPureModules = pureModuleConfiguration.forbiddenImports.map(
+  (forbiddenImport) => ({ group: forbiddenImport.patterns, message: forbiddenImport.reason }),
+);
 
 // Datum 0.5 forbids these names outright, whatever the surrounding idiom.
 const namesForbiddenByDatum = [

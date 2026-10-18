@@ -15,7 +15,11 @@
     "typecheck": "tsc --build",
     "lint": "eslint --max-warnings 0 .",
     "format:check": "prettier --check .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:prose": "tsx tree-checks/bin/check-prose.ts",
+    "check:pure-imports": "tsx tree-checks/bin/check-pure-imports.ts",
+    "check:single-definition": "tsx tree-checks/bin/check-single-definition.ts",
+    "synth": "npm run synth --workspace infra"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

@@ -2,6 +2,11 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['packages/*/test/**/*.test.ts', 'infra/test/**/*.test.ts'],
+    setupFiles: ['./vitest.setup.ts'],
+    include: [
+      'packages/*/test/**/*.test.ts',
+      'infra/test/**/*.test.ts',
+      'tree-checks/test/**/*.test.ts',
+    ],
   },
 });

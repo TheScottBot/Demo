@@ -1,0 +1,30 @@
+{
+  "pureModuleDirectories": ["packages/contracts/src"],
+  "forbiddenImports": [
+    { "patterns": ["@aws-sdk/*"], "reason": "Pure module: no AWS SDK (Spec 00 §2.4 check 2)." },
+    {
+      "patterns": ["aws-cdk-lib", "aws-cdk-lib/*"],
+      "reason": "Pure module: no CDK (Spec 00 §2.4 check 2)."
+    },
+    {
+      "patterns": ["@aws-lambda-powertools/*"],
+      "reason": "Pure module: no Powertools; take the CQ3 interfaces instead (Spec 00 §2.4 check 2)."
+    },
+    {
+      "patterns": ["node:fs", "node:fs/*", "fs", "fs/*"],
+      "reason": "Pure module: no filesystem (Spec 00 §2.4 check 2)."
+    },
+    {
+      "patterns": ["node:net", "net"],
+      "reason": "Pure module: no sockets (Spec 00 §2.4 check 2)."
+    },
+    {
+      "patterns": ["node:http", "http"],
+      "reason": "Pure module: no HTTP server or client (Spec 00 §2.4 check 2)."
+    },
+    {
+      "patterns": ["node:child_process", "child_process"],
+      "reason": "Pure module: no child processes (Spec 00 §2.4 check 2)."
+    }
+  ]
+}

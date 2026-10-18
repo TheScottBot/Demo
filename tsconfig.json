@@ -13,6 +13,7 @@
     "noUnusedParameters": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
+    "resolveJsonModule": true,
     "skipLibCheck": true,
     "noEmit": true
   },
@@ -22,6 +23,10 @@
     "infra/bin",
     "infra/lib",
     "infra/test",
-    "vitest.config.ts"
+    "tree-checks/src",
+    "tree-checks/bin",
+    "tree-checks/test",
+    "vitest.config.ts",
+    "vitest.setup.ts"
   ]
 }

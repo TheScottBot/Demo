@@ -1,5 +1,6 @@
 import {
   DemoError,
+  errorCodeDefinitions,
   PublicRouteNameSchema,
   headerValues,
   httpHeaders,
@@ -59,9 +60,10 @@ export function createStubHandler(options: StubHandlerOptions): DemoHttpHandler 
     (event, _lambdaContext, requestScope) => {
       options.bindTenant?.(readAuthenticationContext(event).tenantId);
       const notImplemented = new DemoError('not-implemented', 'stub-function');
+      const notImplementedStatus = errorCodeDefinitions[notImplemented.errorCode].status;
       options.log.recordRejection({
         errorCode: notImplemented.errorCode,
-        status: 501,
+        status: notImplementedStatus,
         reasonCategory: notImplemented.reasonCategory,
       });
       const responseHeaders: Record<string, string> = {
@@ -82,7 +84,7 @@ export function createStubHandler(options: StubHandlerOptions): DemoHttpHandler 
         );
       }
       return Promise.resolve({
-        statusCode: 501,
+        statusCode: notImplementedStatus,
         headers: responseHeaders,
         body: JSON.stringify(problemDocumentFor(notImplemented, requestScope.correlationId)),
       });

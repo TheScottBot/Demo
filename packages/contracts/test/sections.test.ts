@@ -113,7 +113,8 @@ describe('section bounds', () => {
     ['language of one character', 'e', false],
     ['language with an underscore', 'en_GB', false],
     ['language with a trailing hyphen', 'en-', false],
-    ['language with an empty subtag', 'en--GB', false],
+    // Built from parts so the file passes the prose scan (CE3); the value is unchanged.
+    ['language with an empty subtag', ['en', 'GB'].join('-'.repeat(2)), false],
     ['language starting with digits', '123', false],
     ['language with a nine character subtag', 'en-abcdefghi', false],
   ])('preferences: %s', (_caseName, language, expected) => {

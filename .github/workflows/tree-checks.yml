@@ -1,0 +1,136 @@
+# Spec 00 §2.4: the seven tree wide checks, each its own job so a failure
+# names the check that failed. Every job needs nothing but the Node.js
+# toolchain and no AWS credentials (CE3, Excluded).
+#
+# Both actions are pinned to the commit of the release read on 18 October
+# 2026 (checkout v7.0.1, setup-node v7.1.0), so a moved tag cannot change
+# what runs here.
+
+name: tree checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  prose-scan:
+    name: 1 prose and typography scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      # Datum 0.8: dashes, hyphen runs and US spellings in every tracked file.
+      - run: npm run check:prose
+
+  pure-imports:
+    name: 2 pure module import check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      # Datum 0.10: pure modules build with nothing but the language toolchain.
+      - run: npm run check:pure-imports
+
+  single-definition:
+    name: 3 single definition check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      # Datum 0.12: the contract has one owner, packages/contracts.
+      - run: npm run check:single-definition
+
+  typecheck-and-lint:
+    name: 4 typecheck and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      # Datum 0.10: strict typecheck, and lint with warnings as errors.
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run format:check
+
+  test-suite:
+    name: 5 full test suite (Node.js ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 24.22.0 is .node-version, the version developed on. 24.21.0 is the
+        # Lambda nodejs24.x base image's version (CQ5), the lowest the code
+        # ships on, so a newer only API cannot slip in unnoticed. It must
+        # match the minimum in the engines field of package.json.
+        node-version: ['24.22.0', '24.21.0']
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  property-runs:
+    name: 6 property based parser runs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      # Ten times the ordinary run count for every property in the suite.
+      # This is random generation, not coverage guided fuzzing; see
+      # IMPLEMENTATION_DEVIATIONS.md.
+      - run: npm test
+        env:
+          DEMO_PROPERTY_RUNS: '1000'
+
+  cdk-synth:
+    name: 7 cdk synth for every stage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      # Synthesis needs no AWS account: every stack is environment agnostic.
+      - run: npm run synth

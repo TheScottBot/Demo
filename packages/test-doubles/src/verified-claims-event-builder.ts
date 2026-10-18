@@ -1,4 +1,4 @@
-import type { PublicRoute } from '@demo/contracts';
+import { scopeNames, type PublicRoute } from '@demo/contracts';
 import type { APIGatewayProxyEventV2WithJWTAuthorizer, Context } from 'aws-lambda';
 
 // Spec 00 §4.3: the payload format 2.0 event builder Specs 02 and 03 use to
@@ -32,7 +32,7 @@ function claimsFrom(claimOptions: ClaimOptions = {}): JwtClaims {
   return {
     sub: claimOptions.subject ?? 'synthetic-subject-0001',
     tenant_id: claimOptions.tenantId ?? 'tenant-1',
-    scope: claimOptions.scope ?? 'records:read records:write',
+    scope: claimOptions.scope ?? `${scopeNames.recordsRead} ${scopeNames.recordsWrite}`,
   };
 }
 
