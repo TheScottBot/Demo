@@ -1841,3 +1841,148 @@ Done when: the suite passes. It does on the agent's machine; complete once the a
 |---|---|---|
 | Spec 03 WE9 | The ordering row expects five commands for one record all to succeed. Each must be written against the version the one before leaves, which a client learns only by reading the record after each applies; five commands sent at once against one version would end one `SUCCEEDED` and four `CONFLICT` | WE9 builds the five as WE5's test does, each against the version the last leaves; or the row is restated to send each after the last applies |
 | Spec 03 §4.4 | The store now has seven exports: §4.4's five, `readOperationImage` (WE3) and `recordLastErrorReason` (WE5) | list them at the next revision |
+
+## WE6 Status handler
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction. One contract question is raised below (WQ8).
+
+### Assumptions verified
+
+- WU19: Appendix A as written (WQ5): `Retry-After` 2 seconds while in progress, 60 while awaiting an operator.
+- WD4: answered; the status route requires `records:write`.
+
+### Work completed
+
+- `handlers/status-handler.ts`: `createStatusHandler`, in §9's order.
+  - `records:write`, then the `operationId` grammar and bound; a breach answers 400 naming `pathParameters.operationId`, before anything is read.
+  - The operation is read strongly consistently. Another tenant's operation is answered exactly as a missing one, 404 `not-found`, so its existence is never told (Spec 00 §3.5).
+  - The body is `toOperationStatus`, WE2's mapping, which leaves out `payload`, `requestHash`, `lastErrorReason`, `lastTransitionOrigin` and `redriveCount`, and is checked against the contract before it leaves. `Cache-Control: no-store` always; `Retry-After` from WU19 for in progress and awaiting operator states, none for terminal ones.
+  - An item the journal must refuse answers 500, with nothing of it.
+- `write-path-settings.ts` gained WU19's two values.
+- The intake and status entry points are left for WE8, which builds their functions, as RE5 built the read path's.
+
+### Tests first
+
+`status-handler.test.ts` failed with `Cannot find module` before its source existed.
+
+| Planted regression | Result |
+|---|---|
+| the read scope accepted | 15 tests failed |
+| the tenant not checked | 1 failed |
+| another tenant told `forbidden` | 1 failed |
+| `Retry-After` on terminal states | 3 failed |
+| awaiting an operator polled like in progress | 1 failed |
+| `no-store` missing | 1 failed |
+| too long reported as `grammar` | 1 failed |
+| the identifier not checked | 4 failed |
+| a platform field leaked into the status | 14 failed |
+| in progress `Retry-After` of 3 | 1 failed |
+
+Each planted file was restored byte for byte.
+
+### Decision needed from the author
+
+- **WQ8** The status route's scope in the frozen contract. Blocks nothing built; it keeps the contract true.
+    - Why open: `publicRoutes` in `packages/contracts` still gives the status route `{ kind: 'decided-by', decision: 'Spec 03 WD4' }`, and `CONTRACT.md` says WD4 is open. WD4 is answered, and the handler requires `records:write`. The contract is frozen at 1.0.0, so changing it is a version decision for the author.
+    - Options: (a) release 1.1.0 with the route's rule as `{ kind: 'scope', requiredScope: 'records:write' }`, CE1's routing test and `CONTRACT.md` updated, test first; (b) leave 1.0.0 as it is until Spec 01 needs the rule.
+    - Trade offs: (a) makes the contract say what the code does, before Spec 01 builds the gateway's scopes from this table; nothing reads the rule today but CE1's own test, so no consumer breaks, and a minor version fits. (b) changes nothing now, but leaves the table saying "undecided" about a settled rule, which Spec 01 would have to notice.
+    - Recommendation: (a).
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 65 files, 1,212 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the suite passes. It does on the agent's machine; complete once the author reproduces it.
+
+### Answer, 18 October 2026: contract 1.1.0
+
+WQ8, in the author's words: "WQ8: option (a), release the contract as 1.1.0 with the status route scope, test first. Then start WE7."
+
+- Test first: CE1's routing test (`packages/contracts/test/routing.test.ts`) had asserted the status route's rule as `decided-by`. Its expected rule changed to `records:write`, by this decision, and it failed with `"kind": "decided-by"` before the contract changed. Datum 0.4 forbids editing an earlier test's assertion to make a later phase pass; this one changed because the author changed the behaviour it describes, and the comment beside it says so.
+- `publicRoutes` gives the status route `{ kind: 'scope', requiredScope: 'records:write' }`. The `decided-by` kind stays in `RouteScopeRule`, used by no route, so the type does not narrow within the 1.x versions.
+- `@demo/contracts` moved to 1.1.0, and every workspace names it. `CONTRACT.md` records the change and its migration note.
+
+## WE7 Operator tooling
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction. Running the scripts against a deployed stage follows Spec 00 CD3; under CQ6 nothing is deployed, so they are built and tested, not run.
+
+### Assumptions verified
+
+- WU18: unverified (deviation entry 10). Whichever it is, an operation left `APPLYING` is flagged by inspect and accepted by redrive and discard, as the §7 operator rows allow.
+- §4.3's operator semantics, built in WE1, carry the rerun: an operator transition finding its target set reports done with the stored `redriveCount`, and any other state stops the action.
+
+### Work completed
+
+- `operator/dead-letter-decisions.ts` (pure, listed in `tree-checks/pure-modules.json`): every decision. It describes a dead letter by §8.1's fields, flagging any operation not `DEAD_LETTERED`, and also describes a message it cannot read and one whose operation is gone. It formats one line per message with no command field, and reads the operator's answer (`r`, `d`, `s` or the words). It allows redrive only for a message with an operation, gives §8.2's step orders, names a redrive message `operationId#r` and the stored count, and holds the `operator-discarded` failure.
+- `operator/dead-letter-operator.ts`: carries the steps out.
+  - Inspect receives and deletes nothing.
+  - Redrive moves to `QUEUED` (origin `operator`, one more redrive, attempts untouched), sends a new message in the record's group, then deletes the dead letter.
+  - Discard moves to `FAILED` with `operator-discarded`, then deletes. A message with no operation can only be deleted or skipped.
+  - Each action is logged once, with `operationId`, the action and the outcome, and counted as `OperatorAction`. Nothing else is logged.
+  - `createSqsDeadLetterQueue` receives ten at a time, held 30 seconds so one listing does not repeat a message, and deletes by receipt handle.
+- `operator/operator-runtime.ts`, `operator/dead-letter-inspect-script.ts` and `operator/dead-letter-resolve-script.ts`: the §8.1 scripts, `npm run dlq:inspect:dev --workspace services/write` and `dlq:resolve:` likewise, for dev, test and demo. They run on the operator's own credentials, find the queues by name, print what the decisions return, and ask again on an answer they cannot use.
+- `write-resource-names.ts`: the journal table and the two queue names, stated once for the constructs that create them and the scripts that find them. The journal and worker constructs now take their names from it, unchanged.
+- No Lambda may delete from `commands-dlq`: WE5's construct test already holds it.
+
+### Tests first
+
+`dead-letter-decisions.test.ts`, `dead-letter-operator.test.ts` and `dead-letter-scripts.test.ts` failed with `Cannot find module` before their source existed. The operator rows run against the fake journal table behind `aws-sdk-client-mock`, and the SQS dead letter queue against `aws-sdk-client-mock` too. They cover:
+
+- redrive and discard in order;
+- a send failing after the move, then a rerun that sends `#r1` again without counting a second redrive;
+- a delete failing after the send, then a rerun whose repeated `#r1` SQS would drop;
+- a discard's delete failing, then a rerun;
+- an `APPLYING` operation flagged and redriven;
+- an operation in a state no operator action starts from, stopped with nothing deleted;
+- an unreadable message only deleted;
+- a skip that changes nothing.
+
+Three of the first drafts failed for the agent's own reasons, corrected: a test item held an `undefined` attribute, which the fake table cannot marshal; a filter in the scripts test matched the dead letter's own line as well as its outcome; and the shell dropped a backslash from that filter's pattern.
+
+| Planted regression | Result |
+|---|---|
+| nothing flagged | 3 tests failed |
+| redrive sending before it moves | 6 failed |
+| discard deleting before it moves | 1 failed |
+| a redrive message named by a fresh count | 4 failed |
+| the discard code renamed | 2 failed |
+| a message without an operation redriven | 3 failed |
+| any answer read as skip | 5 failed |
+| a rerun treated as stopped | 3 failed |
+| the action not logged | 3 failed |
+| the action not counted | 3 failed |
+| inspect deleting | 1 failed |
+| allowed actions not checked | 1 failed |
+| a redrive grouped wrongly | 1 failed |
+| resolve accepting a disallowed answer | 1 failed |
+| unreadable letters not counted as flagged | 1 failed, once a test was added: inspection had been tested with operations only |
+| the stub stage accepted | 1 failed |
+| origin `worker` in place of `operator` | 7 failed |
+| an AWS SDK import in `dead-letter-decisions.ts` | check 2 failed: `Pure module: no AWS SDK` |
+
+Each planted file was restored byte for byte.
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 68 files, 1,251 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the suite passes. It does on the agent's machine; complete once the author reproduces it.
+
+### Findings
+
+| For | Finding | Likely fix |
+|---|---|---|
+| Spec 03 §8.2 | `OperatorAction` is emitted through Powertools, which writes an embedded metric format line to the terminal; CloudWatch takes those from a Lambda's logs, not from an operator's terminal, so the count is printed but not ingested | when a stage is deployed: publish it with `PutMetricData`, or ship the scripts' output to a log group with a metric filter |
+| Spec 03 WE9 | resolving the `poison-` operation with `dlq:resolve:dev` remains an author gate needing a deployed stage (WQ1) | as WE9's local suite: drive the operator against the in-memory queue |

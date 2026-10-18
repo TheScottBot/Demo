@@ -90,7 +90,8 @@ export type ScopeName = (typeof scopeNames)[keyof typeof scopeNames];
 
 export type RouteScopeRule =
   | { readonly kind: 'scope'; readonly requiredScope: ScopeName }
-  // Spec 03 WD4 is still open, so the status route's rule is named, not guessed.
+  // Used in 1.0.0 while Spec 03 WD4 was open. No route has used it since 1.1.0;
+  // it stays so the type does not narrow within the 1.x versions.
   | { readonly kind: 'decided-by'; readonly decision: 'Spec 03 WD4' };
 
 export interface PublicRoute {
@@ -123,7 +124,8 @@ export const publicRoutes: readonly PublicRoute[] = [
     path: '/v1/operations/{operationId}',
     handlerOwner: 'spec-03-status-handler',
     successStatuses: [200],
-    scopeRule: { kind: 'decided-by', decision: 'Spec 03 WD4' },
+    // Spec 03 WD4, answered 18 October 2026; in the contract from 1.1.0 (WQ8).
+    scopeRule: { kind: 'scope', requiredScope: scopeNames.recordsWrite },
   },
 ];
 

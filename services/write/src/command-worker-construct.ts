@@ -1,7 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import {
   createDemoNodejsFunction,
-  demoResourceName,
   type DemoStage,
   type ProviderConnection,
 } from '@demo/construct-contracts';
@@ -16,6 +15,7 @@ import {
 import { Construct } from 'constructs';
 import { writeAdapterEnvironment } from './adapters/write-adapters';
 import { writeFunctionEnvironment } from './write-function-configuration';
+import { commandDeadLetterQueueName, commandQueueName } from './write-resource-names';
 import { writePathSettings } from './write-path-settings';
 
 // Spec 03 §6 and §10: the commands queue, its dead letter queue and the
@@ -44,13 +44,13 @@ export class CommandWorker extends Construct {
     super(scope, constructId);
     // §6.1: FIFO with no redrive of its own; operators redrive it (§8).
     const deadLetterQueue = new sqs.Queue(this, 'CommandsDeadLetter', {
-      queueName: `${demoResourceName(properties.stage, 'commands-dlq')}.fifo`,
+      queueName: commandDeadLetterQueueName(properties.stage),
       fifo: true,
       encryption: sqs.QueueEncryption.SQS_MANAGED,
       retentionPeriod: Duration.days(writePathSettings.commandDeadLetterRetentionDays),
     });
     const commandQueue = new sqs.Queue(this, 'CommandsQueue', {
-      queueName: `${demoResourceName(properties.stage, 'commands')}.fifo`,
+      queueName: commandQueueName(properties.stage),
       fifo: true,
       // §5.2 sets the deduplication identifier itself, to the operationId.
       contentBasedDeduplication: false,

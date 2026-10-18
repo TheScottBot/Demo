@@ -1,7 +1,8 @@
-import { demoResourceName, type DemoStage } from '@demo/construct-contracts';
+import type { DemoStage } from '@demo/construct-contracts';
 import { aws_dynamodb as dynamodb } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { commandJournalAttributes, pendingIndexName } from './journal-store';
+import { commandJournalTableName } from './write-resource-names';
 
 // Spec 03 §4: the command journal table, its sparse pending index (§4.2) and
 // its stream (§5.1). The WritePath construct (WE8) builds on it and grants
@@ -17,7 +18,7 @@ export class CommandJournal extends Construct {
   constructor(scope: Construct, constructId: string, properties: CommandJournalProperties) {
     super(scope, constructId);
     this.journalTable = new dynamodb.Table(this, 'JournalTable', {
-      tableName: demoResourceName(properties.stage, 'command-journal'),
+      tableName: commandJournalTableName(properties.stage),
       partitionKey: {
         name: commandJournalAttributes.partitionKey,
         type: dynamodb.AttributeType.STRING,

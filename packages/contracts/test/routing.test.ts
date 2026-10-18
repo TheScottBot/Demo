@@ -95,7 +95,9 @@ describe('the public routes', () => {
         path: '/v1/operations/{operationId}',
         handlerOwner: 'spec-03-status-handler',
         successStatuses: [200],
-        scopeRule: { kind: 'decided-by', decision: 'Spec 03 WD4' },
+        // Contract 1.1.0, WQ8: the scope Spec 03 WD4 decided, replacing the
+        // 1.0.0 entry that named the open decision.
+        scopeRule: { kind: 'scope', requiredScope: 'records:write' },
       },
     ]);
   });

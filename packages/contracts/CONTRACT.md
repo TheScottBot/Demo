@@ -4,7 +4,7 @@ This directory is the owner of every definition in Spec 00 §3 and §4 (datum 0.
 
 ## Status
 
-**Frozen at version 1.0.0, 18 October 2026** (CD1). The author froze it once Spec 02 RE4 and Spec 03 WE2 passed against the doubles, in the author's words: "Fix the CE1 doubled path as a Spec 00 change, tests first, then freeze the contract under CD1."
+**Frozen**, at version 1.1.0 since 18 October 2026. The author froze it at 1.0.0 (CD1) once Spec 02 RE4 and Spec 03 WE2 passed against the doubles, in the author's words: "Fix the CE1 doubled path as a Spec 00 change, tests first, then freeze the contract under CD1."
 
 From the freeze, datum 0.11 applies in full: nothing here is renamed, aliased, normalised, reinterpreted or silently improved, no required value gains a default, and no unknown field is accepted. A change is a version decision for the author, raised as a Spec 00 change:
 
@@ -79,10 +79,12 @@ Each entry is a choice CE1 made where the specification left room, dated, with i
 | 2026-10-18 | `operationDetailField` | Exported: the detail field each operation state carries, the rule `OperationStatusSchema` already applied | Spec 03 WE1: the journal sets and clears details by the same rule, not a copy (datum 0.7) |
 | 2026-10-18 | `invalidFieldsFromZodError` | An unknown discriminator is named by its own path once (`section`, not `section.section`) | Defect found in Spec 03 WE2: zod 4.6.7 already ends the issue's path with the discriminator, and the mapping appended it again. Fixed before the freeze, test first |
 | 2026-10-18 | freeze | Version 1.0.0; changes from here are version decisions | CD1, by the author |
+| 2026-10-18 | 1.1.0: status route scope | The status route's rule is `{ kind: 'scope', requiredScope: 'records:write' }`, where 1.0.0 named the open decision. The `decided-by` kind stays in the type, used by no route | Spec 03 WD4, answered; released as a minor version by the author (WQ8). Nothing read the rule but CE1's own test, whose assertion changed with this decision |
 
 ## Migration notes
 
-None: 1.0.0 is the first frozen version.
+- 1.0.0 is the first frozen version.
+- 1.1.0: a consumer reading the status route's `scopeRule` now finds `records:write` instead of `decided-by`. No consumer read it.
 
 ## Open questions for the author
 

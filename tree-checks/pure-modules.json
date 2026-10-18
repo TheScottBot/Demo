@@ -8,7 +8,8 @@
     "services/write/src/operation-state-machine.ts",
     "services/write/src/request-hash.ts",
     "services/write/src/message-group.ts",
-    "services/write/src/retry-backoff.ts"
+    "services/write/src/retry-backoff.ts",
+    "services/write/src/operator/dead-letter-decisions.ts"
   ],
   "forbiddenImports": [
     {

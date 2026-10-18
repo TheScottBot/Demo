@@ -35,4 +35,8 @@ export const writePathSettings = {
   retryBackoffBaseSeconds: 5,
   retryBackoffCapSeconds: 300,
   retryBackoffJitterFraction: 0.2,
+  // WU19: the status route's Retry-After while in progress, and while an
+  // operation awaits an operator, who acts on a person's time.
+  statusRetryAfterInProgressSeconds: 2,
+  statusRetryAfterAwaitingOperatorSeconds: 60,
 } as const;
