@@ -9,4 +9,6 @@ export const readPathSettings = {
   defaultTtlSeconds: 60,
   // RU5: the most any provider's max-age can lengthen a ttl to.
   maximumTtlSeconds: 300,
+  // RU7: Retry-After, in seconds, on a 503 when no provider answered.
+  retryAfterSeconds: 5,
 } as const;

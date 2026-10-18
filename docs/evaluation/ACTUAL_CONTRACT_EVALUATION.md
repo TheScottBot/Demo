@@ -969,6 +969,8 @@ Done when: the suites pass, and the pure import check passes on both modules. Bo
 
 To be asked in the five part form at RE4, the phase it blocks. §4.2 says an ETag is emitted only when every provider is `ok` or `not-modified`. Read literally, a record that one provider holds nothing of (that provider answers `not-found`, as provider-c does for `record-0006`) can never be given an ETag, and so never answered 304. Counting `not-found` as complete would allow it, but then a provider that held part of a record and now answers `not-found` must not let a conditional read answer 304 over the stale copy.
 
+(18 October 2026.) Asked as RQ4 at the start of RE4 and answered by the author: option (b), a provider answering `not-found` counts as complete, with the safeguard that a 304 needs the same providers as the client's ETag. Recorded as `IMPLEMENTATION_DEVIATIONS.md` entry 8.
+
 ## RE2 Read adapters
 
 Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction.
@@ -1096,6 +1098,63 @@ Done when: the suite passes, and the pure import check passes. Both hold on the 
 At the author's instruction the family is an anonymous proof of concept: nothing may name the real organisation or its domain. Every file git would commit was searched for such terms; the only matches were the word "diagnostics" in `TESTING.md` (Node.js tooling) and a substring of a `package-lock.json` integrity hash. No change was needed.
 
 (18 October 2026, after RE3.) At the author's request the check is now automated, as a Spec 00 change to check 1: an identifying-term rule in `tree-checks/src/prose-scan.ts`, with its term list stored reversed so it is not itself a finding. It reads code as well as prose, splitting identifiers into words first, so a camel or snake case spelling is caught; a term inside a longer word is not. The generated lockfile is exempt, as its hashes can hold any letters. Driven by ten new tests, which failed before the rule existed; no earlier assertion was edited. Proven: a planted term in a Markdown file and one in a code identifier each failed `npm run check:prose`, and both passed once removed. Planted regressions: identifiers not split into words (2 tests failed), the rule not run (10 failed).
+
+## RE4 Read handler
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17, and after RQ4 was answered. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Scope as built
+
+- `read-handler.ts`: `createReadHandler`, taking its adapters, logging (`ReadPathLog`, and the CQ3 interfaces), metrics (`ReadPathMetrics`, §8), cache policy and clocks as dependencies. RE5's Lambda entry point wires those to Powertools and the environment. Moving the entry point to RE5 keeps a small Spec 00 change with the phase that needs it: the Powertools adapter lives in `packages/construct-contracts`, whose main entry imports CDK, so a Lambda bundle needs a runtime only subpath.
+- `read-cache-policy.ts` (pure): the disabled form RD1 allows, whose absence the handler logs once, when it is created.
+- `read-path-settings.ts`: RU7 (5 seconds).
+
+### Behaviour
+
+- §2: correlation identifier (by the wrapper), authentication context, `records:read`, the `recordId` and `If-None-Match` bounds, then the ETag grammar; a breach answers 400 naming `pathParameters.recordId` or `headers.If-None-Match`, before any provider is called.
+- §3.4: 404 when every provider answers `not-found` (so another tenant's record is 404, since providers key by tenant); 503 with `Retry-After: 5` when no provider answered; partial 200 otherwise.
+- §4.3 with RQ4:
+  - 304 needs every provider unchanged or holding nothing, and the unchanged ones to be exactly those in the client's ETag.
+  - Unchanged providers alongside a changed one, or alongside a provider in the client's ETag that now holds nothing, are called again without `If-None-Match` within what remains of the budget, logged once and counted per provider as `ConditionalRefetch`.
+  - When the rest failed and none answered 200, the answer is 503 without that call.
+- §5: `Cache-Control: private, max-age=` the smallest ttl among answering providers on a complete 200 or a 304; `private, max-age=0, must-revalidate` on a partial 200; `Vary: Authorization` on both; an ETag only on a complete read.
+- §8: every provider call recorded for `ProviderLatency` and `ProviderOutcome`, including the second calls; `ProviderSectionIgnored`, `ReadPartial`, `ReadNotModified` and `ReadAllSourcesUnavailable` counted.
+
+### Tests first
+
+`read-handler.test.ts` failed with `createReadHandler is not a function` (24 tests) before the source existed. Its rows run against the msw doubles, seeded without tenant-2's `record-0003` for the tenant isolation row, and against stub adapters for the rows no double can produce: a second call that fails, unchanged providers beside failed ones, every provider failing, unequal ttls, and a provider sending a section it does not own.
+
+Check 3 then found a duplication in the new handler: it listed the failed statuses again, a rule the merge already held. The rule is now `isFailedStatus` in `record-merge.ts`, used by both.
+
+| Planted regression | Result |
+|---|---|
+| RQ4 safeguard removed | 1 test failed |
+| conditional second call skipped | 3 failed |
+| ETag sent on a partial read | 2 failed |
+| partial read cached | 2 failed |
+| `Vary` missing on 304 | 1 failed |
+| scope not required | 1 failed |
+| bad `If-None-Match` accepted | 4 failed |
+| `Retry-After` missing on 503 | 2 failed |
+| all `not-found` answered 503 | 2 failed |
+| absent cache not logged | 1 failed, once replanted: the first plant was a syntax error, which failed the file without running a test, so it proved nothing and was redone as a valid no op call |
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 40 files, 961 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the suite passes. It does on the agent's machine; complete once the author reproduces it.
+
+### For RE5
+
+- The Lambda entry point: environment (`PROVIDER_TIMEOUT_MILLISECONDS`, `FAN_OUT_BUDGET_MILLISECONDS`, the provider variables), Secrets Manager reads, and Powertools behind `ReadPathLog` and `ReadPathMetrics`; the subsegment per provider call of §8.
+- A Spec 00 change: a runtime only subpath of `packages/construct-contracts` for `createPowertoolsProblemHandling`, so the read bundle does not pull in CDK.
 
 # Spec 03 write path
 

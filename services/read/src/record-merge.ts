@@ -46,6 +46,12 @@ export interface MergedRead {
   readonly ignoredSectionCounts: Partial<Record<ProviderIdentifier, number>>;
 }
 
+// A provider that timed out or failed, as opposed to one that answered,
+// even with not-found. The one statement of the rule; the handler uses it too.
+export function isFailedStatus(status: ProviderOutcomeStatus): boolean {
+  return status === 'timeout' || status === 'error';
+}
+
 // The routing table's providers, in its order, each once.
 const routingProviders: readonly ProviderIdentifier[] = [
   ...new Set(sectionRoutingTable.map((routingRow) => routingRow.owningProvider)),
@@ -123,7 +129,7 @@ export function mergeProviderOutcomes(
   }
 
   const statuses = orderedOutcomes.map((outcome) => outcome.status);
-  const anyFailed = statuses.some((status) => status === 'timeout' || status === 'error');
+  const anyFailed = statuses.some(isFailedStatus);
   const anyAnswered = statuses.some((status) => status === 'ok' || status === 'not-modified');
   const anyOk = statuses.includes('ok');
 

@@ -8,3 +8,5 @@ export * from './aggregate-etag';
 export * from './read-path-settings';
 export * from './record-merge';
 export * from './provider-fan-out';
+export * from './read-cache-policy';
+export * from './read-handler';

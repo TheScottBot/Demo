@@ -78,7 +78,7 @@ Only the author can clear these, and the agent never claims one has passed (datu
 
 | Gate | Owner | State |
 |---|---|---|
-| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1 to CE5 and RE1 to RE3 |
+| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1 to CE5 and RE1 to RE4 |
 | See each CI job fail on a planted violation and pass, on GitHub | Spec 00 CE3 | outstanding: needs a push; proven locally only |
 | Install Node.js 24.22.0 locally (CQ5) | Spec 00 | outstanding; an action rather than a gate, listed so it is not lost |
 | The manual smoke check through the public API | Spec 01 EE5 | to be redefined under CQ6 in the Spec 01 Plan stage |

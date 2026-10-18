@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-Spec 00 is built up to CE6, which waits for the streams (RE5, WE8, EE3). RE1 to RE3 are built; RE4 (the read handler) is next in Spec 02, and opens with the ETag question noted in the RE1 record. A question about ETags and `not-found` providers is noted for RE4 (the RE1 record). The Spec 01 and Spec 03 Plan stages have not started.
+Spec 00 is built up to CE6, which waits for the streams (RE5, WE8, EE3). RE1 to RE4 are built; RE5 (the ReadPath construct and the read Lambda entry point) is next in Spec 02, with a small Spec 00 change for a runtime only Powertools subpath. CD1 freezes the contract once RE4 and WE2 pass against the doubles: RE4 has. A question about ETags and `not-found` providers is noted for RE4 (the RE1 record). The Spec 01 and Spec 03 Plan stages have not started.
 
 ## Anonymity
 
@@ -43,7 +43,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
 | Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `infra` |
-| Suite | 39 files, 925 tests, and all seven tree checks passing on 18 October 2026 |
+| Suite | 40 files, 961 tests, and all seven tree checks passing on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
@@ -76,7 +76,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | RE1 Aggregate ETag and merge | awaiting reproduction | CE1, CE2, CE5 | `services/read`: `aggregate-etag.ts`, `record-merge.ts`, both proven pure; ETag emission and 304 rules left to RE4 |
 | RE2 Read adapters | awaiting reproduction | CE1, CE2, CE5 | `services/read/src/adapters`: `HttpReadAdapter` and the three provider adapters, every §3.3 row tested |
 | RE3 Fan-out | awaiting reproduction | CE1, CE2, CE5 | `provider-fan-out.ts`, proven pure; per provider deadline, budget and parent signal; adapters that ignore abort still time out |
-| RE4 Read handler | blocked | CE1, CE2, CE5, RQ4 | started 18 October 2026; waiting on RQ4 (ETags when a provider answers not-found) |
+| RE4 Read handler | awaiting reproduction | CE1, CE2, CE5 | `read-handler.ts` and the disabled `read-cache-policy.ts`; every §2 to §5 row and RQ4 tested; the Lambda entry point moved to RE5 |
 | RE5 ReadPath construct | not started | CE1, CE2, CE5 | |
 | RE6 Deployed checks against the mock providers | not started | RE4, CE4 | under RQ1, run locally against the local mock providers; no longer blocked on deployment |
 | RE7 Read cache | not scheduled | RD1 | RD1 leaves it unscheduled |
@@ -122,7 +122,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | RQ1 RE6 under CQ6 | answered | an automated suite against the local mock providers |
 | RQ2 RU15 latency gate under CQ6 | answered | set aside; deviation entry 7 |
 | RQ3 RU author values | answered | Appendix A as written, RU12 100 |
-| RQ4 ETags when a provider answers not-found | open | RE4 |
+| RQ4 ETags when a provider answers not-found | answered | option (b): not-found counts as complete; a 304 needs the same providers as the client's ETag; deviation entry 8 |
 | WD1 Applying commands after a provider outage | open | WE3, WE5 |
 | WD2 Canonical form for `requestHash` | open | Spec 03 intake |
 | WD3 Retention | open | Spec 03 |
@@ -130,7 +130,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 ## Open items for the author
 
-- Reproduce CE1 to CE5 and RE1 to RE3 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5 and RE1 to RE4 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
 - Install Node.js 24.22.0 locally (CQ5).
 

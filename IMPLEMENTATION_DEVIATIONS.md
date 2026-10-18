@@ -60,6 +60,14 @@ Each entry is history once its decision is given; a later change to it is a date
 - **Author's decision:** RQ2, 18 October 2026: set aside; RU15 stays in Spec 02 for a deployment.
 - **Covering test:** none; the gate is absent by decision.
 
+## 8. A provider holding nothing of a record does not withhold the ETag
+
+- **Rule:** Spec 02 §4.2: emit an ETag only when every provider is `ok` or `not-modified`.
+- **Done instead:** a provider answering `not-found` counts as complete too, so a record that some provider holds nothing of still gets an ETag. The safeguard: a conditional read is answered 304 only when the providers answering `not-modified` are exactly the providers in the client's ETag. If a provider in the client's ETag now answers `not-found`, the providers that answered `not-modified` are called again without `If-None-Match` and the read answers 200, so a 304 never hides a section that has gone.
+- **Why:** read literally, a record held by fewer than all three providers could never be answered 304. §4.2's stated purpose, that a conditional request never hides a missing source, concerns providers that failed; `not-found` is not a failure (§3.3), and the safeguard keeps the purpose for it too.
+- **Author's decision:** RQ4, 18 October 2026: option (b), with the safeguard.
+- **Covering test:** `services/read/test/read-handler.test.ts`, the RQ4 rows (RE4).
+
 ## Not deviations
 
 Recorded so they are not mistaken for one.
