@@ -84,6 +84,14 @@ Each entry is history once its decision is given; a later change to it is a date
 - **Author's decision:** WQ2, 18 October 2026: option (a), record them as unverified.
 - **Covering test:** WE2 (both body forms, each bound), WE5 (backoff set through the queue), WE7 (an `APPLYING` operation redriven and discarded).
 
+## 11. The worker sends the client's Idempotency-Key to the provider
+
+- **Rule:** Spec 03 §6.3 step 5: call the provider's `WriteAdapter` with `idempotencyKey` set to `operationId`.
+- **Done instead:** the worker sends the operation's stored `idempotencyKey`, the client's own key from intake. `operationId` is a ULID, and the provider wire, frozen with the contract at 1.0.0, holds `Idempotency-Key` to the §3.3 grammar, a version 4 UUID; a provider answers any other key 400, so every command would have ended `FAILED`. Providers key by tenant and key (CQ7.4), and intake allows one operation per tenant and key, so the client's key names exactly one operation, as `operationId` would, and stays the same across every retry and redrive.
+- **Why:** the two specifications disagree on the key's grammar; this follows the frozen contract without reopening it.
+- **Author's decision:** WQ7, 18 October 2026, in the author's words: "WQ7: option (a), the worker sends the client's own Idempotency-Key; record the deviation."
+- **Covering test:** WE5: the worker's provider call carries the operation's stored `idempotencyKey`, and a retried attempt carries the same one.
+
 ## Not deviations
 
 Recorded so they are not mistaken for one.

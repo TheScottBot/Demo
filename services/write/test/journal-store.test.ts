@@ -431,6 +431,37 @@ describe('transitionOperation (§4.3, §7)', () => {
   });
 });
 
+describe('recordLastErrorReason (§6.3, the WE1 finding)', () => {
+  beforeEach(async () => {
+    await journalStore.createOperation(newOperation());
+  });
+
+  it('saves the reason on an APPLYING operation, changing nothing else', async () => {
+    await journalStore.transitionOperation({
+      operationId: '01JB0000000000000000000101',
+      targetState: 'APPLYING',
+      origin: 'worker',
+    });
+    const before = structuredClone(journalTable.itemAt('OP#01JB0000000000000000000101', 'OP'));
+    expect(
+      await journalStore.recordLastErrorReason('01JB0000000000000000000101', 'server-error'),
+    ).toBe('recorded');
+    expect(journalTable.itemAt('OP#01JB0000000000000000000101', 'OP')).toEqual({
+      ...before,
+      lastErrorReason: 'server-error',
+    });
+  });
+
+  it('saves nothing on an operation no longer APPLYING', async () => {
+    expect(
+      await journalStore.recordLastErrorReason('01JB0000000000000000000101', 'server-error'),
+    ).toBe('not-applying');
+    expect(journalTable.itemAt('OP#01JB0000000000000000000101', 'OP')).not.toHaveProperty(
+      'lastErrorReason',
+    );
+  });
+});
+
 describe('listPendingOperations (§4.2, §5.3)', () => {
   it('lists operations still pending since before the cutoff, oldest first, up to the limit', async () => {
     for (const ordinal of [1, 2, 3, 4]) {

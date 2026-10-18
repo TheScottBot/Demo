@@ -1749,3 +1749,95 @@ Done when: the suite passes. It does on the agent's machine; complete once the a
 |---|---|---|
 | Spec 02 RE2 | `http-read-adapter.ts` holds private copies of the bounded body read, body discard, cached key reader and endpoint schema that `@demo/construct-contracts/runtime` now provides | import them from the runtime subpath; RE2's suite is the test |
 | Spec 03 §11 | `ProviderRetryAfterIgnored` is a metric §11 does not list | add it to §11's table at the next revision |
+
+### Answer, 18 October 2026
+
+WQ7, in the author's words: "WQ7: option (a), the worker sends the client's own Idempotency-Key; record the deviation. Then start WE5." Recorded as `IMPLEMENTATION_DEVIATIONS.md` entry 11.
+
+## WE5 Worker
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17, and after WQ7 was answered. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Assumptions verified
+
+- WU11 to WU17: read in the Plan stage and adopted as Appendix A gives them (WQ5): visibility 120 seconds, retention 4 and 14 days, 5 receives, concurrency 10, an 8,000 ms call abort, backoff from 5 seconds doubling to 300 with up to a fifth taken off.
+- WU16: the worker reads `ApproximateReceiveCount` from the record's attributes, as `@types/aws-lambda` 8.10.164 types it.
+- WU18, and whether a visibility the worker sets survives Lambda handling the reported failure: unverified (deviation entry 10). If Lambda resets the visibility, a retry waits the queue's 120 seconds instead of its backoff.
+- WD1 and WQ7: answered; deviation entries 9 and 11, whose covering tests are below.
+
+### Work completed
+
+- `retry-backoff.ts` (pure, listed in `tree-checks/pure-modules.json`): the provider's `Retry-After` in whole seconds when given, or the doubling backoff with jitter taken off.
+- `command-queue.ts` gained `parseCommandMessage`, which bounds the body at 256 bytes, checks `messageVersion` before the shape, and parses with the same strict schema the relay and sweep format with; and `createSqsMessageVisibility`.
+- `handlers/worker-handler.ts`: `createWorkerHandler`, in §6.3's order.
+  - A rejected message is logged, counted as `QueueMessageRejected` by reason and reported failed. A missing operation is acknowledged with `OperationMissing`. A terminal one is acknowledged, logged and counted as `DuplicateDelivery`. A stale move to `APPLYING` (an operation awaiting an operator, or moved by another delivery) is acknowledged after the store has logged and counted it.
+  - The provider call carries the operation's stored `idempotencyKey` (entry 11), the `operationId` as correlation, and an abort at 8,000 ms.
+  - Applied, conflict and rejected become `SUCCEEDED`, `CONFLICT` and `FAILED` with their detail. A retryable outcome saves `lastErrorReason`, logs the retry once, sets the backoff as visibility and reports the message failed. At the fifth receive it becomes `DEAD_LETTERED` with `retries-exhausted`.
+  - `ApplyOutcome`, `ApplyLatency` and `TimeToTerminalState` are recorded; `operationId`, `providerId` and `attempts` are bound to the log. An unexpected failure is thrown, so it counts as a function error.
+- `journal-store.ts` gained `recordLastErrorReason`, conditional on the operation still being `APPLYING`: the update WE1 found missing from §4.4's list, which now has seven exports.
+- `adapters/write-adapters.ts` gained `writeAdapterEnvironment`, so the construct sets the provider variables the adapters read back.
+- `write-path-observability.ts` gained the worker's log and metrics, and the adapter's `ProviderRetryAfterIgnored`; `handlers/worker-handler-entry.ts` wires them, with Secrets Manager for the provider keys.
+- `command-worker-construct.ts`: `CommandWorker`, the `commands` FIFO queue (content based deduplication off, visibility 120 seconds, 4 days, redrive to `commands-dlq` after 5 receives, SQS managed encryption), `commands-dlq` (FIFO, 14 days, no redrive), and the worker (512 MB, 20 seconds, batches of 1, failures per message, concurrency 10), granted the journal read and update, consumption of `commands` and the three provider secrets, and nothing on `commands-dlq`. Spec 03 §10's layout names no file for it; `WritePath` (WE8) builds on it.
+- The bundle test now names, for each entry, a module its bundle must hold: the relay's and sweep's assertions are as WE3 wrote them, and the worker's is `worker-handler.ts`.
+
+### Dependency record (datum 0.13)
+
+`@aws-sdk/client-secrets-manager` 3.1152.0 joins `services/write`, as it already serves the read path (RE5): the provider keys are read from Secrets Manager (Spec 00 §2.3).
+
+### Tests first
+
+`retry-backoff.test.ts`, `worker-handler.test.ts` and `command-worker-construct.test.ts` failed with `Cannot find module`, the store's new tests with `recordLastErrorReason is not a function`, and the worker bundle with a failed build, before their source existed. The backoff has a fast-check property: always a whole number of seconds between 80 per cent of the delay and the delay.
+
+WD1's covering tests (entry 9): a command applied after its record changed ends `CONFLICT` with `attempts` of 1, and the provider keeps the change; five commands for one record, each written against the version the one before leaves, all end `SUCCEEDED` when processed in submission order; and a command that reaches the provider ahead of the one it was written after ends `CONFLICT`. Entry 11's: the provider call carries the stored client key, and a command retried twice then applied used one key throughout.
+
+Two of the first test drafts were the agent's own errors, corrected: the bundle test asked every entry's bundle for `enqueue-operation.ts`, which the worker never imports; and a construct test used CDK's `Match` inside vitest's `toMatchObject`, which does not understand it.
+
+| Planted regression | Result |
+|---|---|
+| jitter added, not taken off | 2 tests failed |
+| `Retry-After` ignored | 2 failed |
+| no doubling | 3 failed |
+| `operationId` sent as the key | 12 failed |
+| the call timeout not WU15's | 1 failed |
+| dead lettered one receive late | 2 failed |
+| visibility set on the wrong message | 2 failed |
+| the retry reason not saved | 1 failed |
+| a retryable outcome acknowledged | 1 failed |
+| a dead letter acknowledged | 1 failed |
+| a terminal duplicate not recognised | 1 failed |
+| a rejected message acknowledged | 4 failed |
+| a missing operation reported failed | 1 failed |
+| time to terminal state counted for dead letters | 1 failed |
+| the message version not checked first | 1 failed |
+| the message bound not checked | 1 failed |
+| content based deduplication on | 1 failed |
+| dead letter after 3 receives | 1 failed |
+| batches of 10 | 1 failed |
+| no concurrency cap | 1 failed |
+| visibility of 30 seconds | 1 failed |
+| the worker allowed to consume `commands-dlq` | 1 failed |
+| secrets granted on every resource | 1 failed, once a test was added: the permissions test had checked actions, not their resources |
+| the worker allowed to scan | 1 failed |
+| `commands-dlq` kept 4 days | 1 failed |
+| a filesystem import in `retry-backoff.ts` | check 2 failed: `Pure module: no filesystem` |
+
+Each planted file was restored byte for byte.
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 64 files, 1,196 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the suite passes. It does on the agent's machine; complete once the author reproduces it.
+
+### Findings
+
+| For | Finding | Likely fix |
+|---|---|---|
+| Spec 03 WE9 | The ordering row expects five commands for one record all to succeed. Each must be written against the version the one before leaves, which a client learns only by reading the record after each applies; five commands sent at once against one version would end one `SUCCEEDED` and four `CONFLICT` | WE9 builds the five as WE5's test does, each against the version the last leaves; or the row is restated to send each after the last applies |
+| Spec 03 §4.4 | The store now has seven exports: §4.4's five, `readOperationImage` (WE3) and `recordLastErrorReason` (WE5) | list them at the next revision |

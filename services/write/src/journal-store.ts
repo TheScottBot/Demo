@@ -237,6 +237,13 @@ export interface JournalStore {
     idempotencyKey: string,
   ): Promise<StoredIdempotencyEntry | undefined>;
   transitionOperation(request: OperationTransitionRequest): Promise<OperationTransitionOutcome>;
+  // §6.3: a retryable outcome saves its reason without a state change, and
+  // only while the operation is still APPLYING. Spec 03 §4.4 lists five
+  // exports; WE1 found this update missing from them.
+  recordLastErrorReason(
+    operationId: string,
+    lastErrorReason: string,
+  ): Promise<'recorded' | 'not-applying'>;
   listPendingOperations(options: {
     pendingBefore: Date;
     limit: number;
@@ -520,6 +527,32 @@ export function createJournalStore(options: JournalStoreOptions): JournalStore {
         });
         metrics.countStaleTransition(request.origin);
         return { outcome: 'stale', currentState: currentOperation?.state };
+      }
+    },
+
+    recordLastErrorReason: async (operationId, lastErrorReason) => {
+      try {
+        await documentClient.send(
+          new UpdateCommand({
+            TableName: tableName,
+            Key: { partitionKey: operationPartitionKey(operationId), sortKey: operationSortKey },
+            UpdateExpression: 'SET #lastErrorReason = :lastErrorReason',
+            ConditionExpression: '#state IN (:applying)',
+            ExpressionAttributeNames: { '#lastErrorReason': 'lastErrorReason', '#state': 'state' },
+            ExpressionAttributeValues: {
+              ':lastErrorReason': lastErrorReason,
+              ':applying': 'APPLYING',
+            },
+            ReturnValues: 'ALL_NEW',
+            ReturnValuesOnConditionCheckFailure: 'ALL_OLD',
+          }),
+        );
+        return 'recorded';
+      } catch (updateFailure) {
+        if (updateFailure instanceof ConditionalCheckFailedException) {
+          return 'not-applying';
+        }
+        throw updateFailure;
       }
     },
 

@@ -1,3 +1,4 @@
+import type { ProviderConnection } from '@demo/construct-contracts';
 import { parseProviderEndpoint } from '@demo/construct-contracts/runtime';
 import type { ProviderIdentifier, WriteAdapter } from '@demo/contracts';
 import { createHttpWriteAdapter, type WriteAdapterMetrics } from './http-write-adapter';
@@ -38,4 +39,29 @@ export function createConfiguredWriteAdapters(
       metrics,
     });
   });
+}
+
+// The worker's provider variables, set by the construct from the connections
+// and read back by createConfiguredWriteAdapters, so the two cannot drift.
+// The secret's ARN, never its value (Spec 00 §2.3).
+export function writeAdapterEnvironment(
+  providers: readonly ProviderConnection[],
+): Record<string, string> {
+  if (providers.length !== providerWriteAdapterSettings.length) {
+    throw new Error('write-path-needs-each-provider-once');
+  }
+  return Object.fromEntries(
+    providerWriteAdapterSettings.flatMap((settings) => {
+      const connection = providers.find(
+        (candidate) => candidate.providerId === settings.providerId,
+      );
+      if (connection === undefined) {
+        throw new Error('write-path-needs-each-provider-once');
+      }
+      return [
+        [settings.baseUrlVariable, connection.baseUrl],
+        [settings.secretArnVariable, connection.secretArn],
+      ];
+    }),
+  );
 }
