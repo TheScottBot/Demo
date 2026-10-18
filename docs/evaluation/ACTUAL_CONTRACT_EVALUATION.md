@@ -387,10 +387,91 @@ Given by the author in the working session, recorded as given.
 
 Author convention, same day: proposed commit message text uses Conventional Commits types (`feat`, `fix`, `docs` and so on).
 
-### Still open
+| CQ5 | The recommendation: install Node.js 24.22.0, the latest 24 LTS, locally; continuous integration also runs a job pinned to exactly 24.21.0, the Lambda base image's version. | Installing Node.js is the author's action. Until it is done, phases run on v22.23.2 and each reproduction report says so. |
+| CQ6 | The recommendation: no emulator. Mock providers run as local Node.js servers; handlers are invoked directly with the event builder; the gateway is covered by synth assertions. Gateway behaviour nothing local can exercise (401 responses, CORS preflight, throttling, the authoriser) is recorded in `IMPLEMENTATION_DEVIATIONS.md` as unverified. | EE4, EE5, RE6, WE9 and CE4's deployment and seeding are replaced, each owner recording how in its own Plan stage. |
 
-- **CQ5** Local Node.js version. The target is Node.js 24, the local machine runs v22.23.2. Blocks the reproduction reports of every phase, since automated criteria must reproduce on the target toolchain.
-- **CQ6** What replaces the deployed checks. Blocks CE4's deployment and seeding, Spec 01 EE4 and EE5, Spec 02 RE6 and Spec 03 WE9.
+### Plan stage exit
+
+Closed on 18 October 2026 for Spec 00: every CU value is read from source or decided by the author, except CU4, which the author's choice to run locally leaves unsettled by design (see CU4). Every decision is answered.
+
+## CE1 Contract package
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17.
+
+### Assumptions verified
+
+- CU3: `@types/aws-lambda` 8.10.164 supplies `APIGatewayProxyEventV2WithJWTAuthorizer`, `APIGatewayProxyStructuredResultV2` and `Context` as read in the Plan stage; the package typechecks against them.
+- CU4: not settled (local only); `readAuthenticationContext` reads both renderings, tested.
+- CU10: the §3.3 and §3.7 values as adopted under CQ4, each tested at its bound and one past it.
+- zod 4.6.7 strict objects: every schema refuses an unknown key (tested per schema); issue codes read from `zod/v4/core/errors.d.ts` before mapping them.
+- `ulid` 3.0.2 exports `ulid()`, read from `dist/ulid.d.ts`.
+
+### Tests first
+
+All 13 test files were written before any source file existed. First run: every file failed with `Cannot find module '../src/index'`. That is the expected reason for a package with no source, but it is weaker evidence than a failing assertion, so once the suite passed, eight regressions were planted one at a time in the source and the suite was run against each (scratch script, file restored byte for byte after each):
+
+| Planted regression | Result |
+|---|---|
+| unknown key reported by its own name | 4 tests failed |
+| internal failure logs the error message | 1 failed |
+| command body bound one byte larger | 2 failed |
+| ULID grammar admits I, L, O and U | 5 failed |
+| provider version allowed on any outcome | 1 failed |
+| refused correlation identifier echoed | 1 failed |
+| scope matched by prefix | 1 failed |
+| provider `Retry-After` bound one second larger | 2 failed |
+
+### Pure import check
+
+`@typescript-eslint/no-restricted-imports` over `packages/contracts/src`, configured in `eslint.config.js` from the Spec 00 §2.4 check 2 list, `import type` included. A planted file importing `@aws-sdk/client-dynamodb`, `aws-cdk-lib`, `@aws-lambda-powertools/logger`, `node:fs`, `node:net`, `node:http` and `child_process` produced exactly seven errors, one per import, and lint exited 1. The file was deleted and lint over the real package exited 0. CE3 promotes this into the continuous integration job.
+
+The typecheck likewise failed (exit 1, TS2322) on a planted type error and passed once it was removed.
+
+### Reproduction report
+
+| Item | Value |
+|---|---|
+| Platform | Windows 11 Home 10.0.26200 |
+| Node.js, npm | v22.23.2, 10.9.8 (target is Node.js 24 under CQ1; not yet installed, CQ5) |
+| Pinned packages | `zod` 4.6.7, `ulid` 3.0.2, `@types/aws-lambda` 8.10.164, `typescript` 5.9.3, `vitest` 5.0.5, `fast-check` 4.10.2, `@fast-check/vitest` 0.5.0, `eslint` 10.13.0, `@eslint/js` 10.0.1, `typescript-eslint` 8.71.2, `prettier` 3.9.10, `@types/node` 24.19.2 |
+
+Commands, from the repository root:
+
+```bash
+npm ci
+npm run typecheck
+npm run lint
+npm run format:check
+npm test --workspace packages/contracts
+npm test
+```
+
+Results:
+
+| Check | Result |
+|---|---|
+| Typecheck (`tsc --build`, `strict`, `noUncheckedIndexedAccess`) | exit 0 |
+| Lint (`eslint --max-warnings 0`) | exit 0, 0 warnings |
+| Format (`prettier --check`) | all files formatted |
+| Focused suite (`packages/contracts`) | 13 files, 345 tests passed |
+| Full suite | 13 files, 345 tests passed (one workspace exists) |
+| Property runs (§2.4 check 6) | fast-check defaults, 100 runs per property, within the suite |
+| Memory and undefined behaviour analysis | none applies to TypeScript; what Node.js offers is CE3's `TESTING.md` record |
+| Tests skipped | none |
+| Tests requiring the author | none |
+
+Done when: the suite passes, lint is clean, and the pure import check passes on the package. All three hold on the agent's machine. The phase is not complete until the author reproduces the commands above on a clean machine (datum Stage three), ideally on Node.js 24 once CQ5 is done.
+
+### Findings
+
+| For | Finding | Likely fix |
+|---|---|---|
+| Spec 00 §2.5 | Apart from `CONTRACT.md` (CE1), `LICENSE` (CD4, written in CE1) and `IMPLEMENTATION_DEVIATIONS.md` (CE3), no phase owns the required documents (`README.md`, `TESTING.md`, `CHANGELOG.md`, `SECURITY.md`, `PRIVACY.md`) | assign them to CE3, or to a new Spec 00 phase |
+| Spec 00 CE3 | `LICENSE` is the MIT text verbatim, which uses quotation marks for defined terms; datum 0.8 allows quotation marks only for quotation | the prose scan treats `LICENSE` as quoted legal text, recorded as a deviation |
+| Spec 02 RE2 | Spec 02 says provider `max-age` is defaulted and capped; Spec 00 §4.3's `badheader-` fault and datum 0.10 refuse an over bound value instead. `parseCacheControlMaxAge` reports it as invalid | Spec 02 maps an invalid `max-age` to `header-invalid`, as its own §3.3 table already says |
+| Spec 01 EE3 | §5.3's exposed headers are a subset of the response headers in `httpHeaders` (no `Cache-Control`, no `Vary`), so they cannot be derived from `direction` alone | Spec 01 selects them by name from `httpHeaders`, or Spec 00 marks them |
+
+Open questions raised by CE1 are listed in `packages/contracts/CONTRACT.md`: a bound for the `sub` claim, and `Cache-Control` on read route problem documents.
 
 # Spec 01 entry point
 

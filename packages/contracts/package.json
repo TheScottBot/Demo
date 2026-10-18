@@ -1,0 +1,19 @@
+{
+  "name": "@demo/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Spec 00 shared contracts: schemas, types, bounds, headers, errors, routing table and authentication context. Pure: no AWS, no I/O.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --root ../.. packages/contracts"
+  },
+  "dependencies": {
+    "@types/aws-lambda": "8.10.164",
+    "ulid": "3.0.2",
+    "zod": "4.6.7"
+  }
+}

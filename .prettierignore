@@ -1,0 +1,6 @@
+# Markdown is governed by the datum 0.8 prose scan, not by Prettier, and the
+# specifications are the author's documents.
+**/*.md
+package-lock.json
+node_modules/
+coverage/
