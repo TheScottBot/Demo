@@ -26,6 +26,7 @@ npm run synth
 | Shared test doubles | `packages/test-doubles/test` | `npm test --workspace packages/test-doubles` | locally; CI jobs 5 and 6 |
 | Construct contracts and stubs | `packages/construct-contracts/test` | `npm test --workspace packages/construct-contracts` | locally; CI jobs 5 and 6 |
 | Read path | `services/read/test` | `npm test --workspace services/read` | locally; CI jobs 5 and 6 |
+| Write path | `services/write/test` | `npm test --workspace services/write` | locally; CI jobs 5 and 6 |
 | Mock providers | `services/mock-providers/test` | `npm test --workspace services/mock-providers` | locally; CI jobs 5 and 6 |
 | Synth assertions | `infra/test` | `npm test --workspace infra` | locally; CI jobs 5 and 6 |
 | Read checks against the local mock providers (Spec 02 RE6) | `infra/test/read.spec.ts` | `npx vitest run infra/test/read.spec.ts`, and within `npm test --workspace infra` | locally; CI jobs 5 and 6 |
