@@ -23,6 +23,7 @@ import {
   TenantIdentifierSchema,
   TimestampSchema,
   commandTypes,
+  contractVersions,
   operationDetailField,
   type OperationState,
 } from '@demo/contracts';
@@ -51,7 +52,8 @@ export const commandJournalAttributes = {
 
 export const pendingIndexName = 'pending-index';
 
-const journalItemSchemaVersion = 1;
+// Spec 00 §3.1 states the version once; every item carries it.
+const journalItemSchemaVersion = contractVersions.journalSchemaVersion;
 const operationSortKey = 'OP';
 const idempotencySortKey = 'IDEM';
 // §4.2: one partition is enough at demo volume (WU4).
@@ -227,6 +229,9 @@ export class JournalItemRejectedError extends Error {
 export interface JournalStore {
   createOperation(newOperation: NewOperation): Promise<CreateOperationOutcome>;
   readOperation(operationId: string): Promise<StoredOperation | undefined>;
+  // An operation item as the journal's stream delivers it (§5.1), checked as
+  // any read is. It touches no table: the relay has the item already.
+  readOperationImage(operationItem: Record<string, unknown>): StoredOperation;
   readIdempotencyEntry(
     tenantId: string,
     idempotencyKey: string,
@@ -381,6 +386,8 @@ export function createJournalStore(options: JournalStoreOptions): JournalStore {
       );
       return readResult.Item === undefined ? undefined : parseOperation(readResult.Item);
     },
+
+    readOperationImage: (operationItem) => parseOperation(operationItem),
 
     readIdempotencyEntry: async (tenantId, idempotencyKey) => {
       const readResult = await documentClient.send(

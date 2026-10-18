@@ -6,7 +6,8 @@
     "services/read/src/provider-fan-out.ts",
     "services/read/src/read-cache-policy.ts",
     "services/write/src/operation-state-machine.ts",
-    "services/write/src/request-hash.ts"
+    "services/write/src/request-hash.ts",
+    "services/write/src/message-group.ts"
   ],
   "forbiddenImports": [
     {

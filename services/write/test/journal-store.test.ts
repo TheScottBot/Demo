@@ -9,7 +9,6 @@ import {
   type JournalLog,
   type JournalMetrics,
   type JournalStore,
-  type NewOperation,
 } from '../src/journal-store';
 import type { TransitionOrigin } from '../src/operation-state-machine';
 import {
@@ -17,25 +16,10 @@ import {
   fakeJournalTableName,
   type FakeCommandJournalTable,
 } from './support/fake-command-journal-table';
+import { newOperation } from './support/write-path-fixtures';
 
 const createdAt = new Date('2026-10-18T09:30:00.000Z');
 const secondsPerDay = 86_400;
-
-function newOperation(overrides: Partial<NewOperation> = {}): NewOperation {
-  return {
-    operationId: '01JB0000000000000000000101',
-    tenantId: 'tenant-1',
-    recordId: 'record-0001',
-    providerId: 'provider-a',
-    section: 'summary',
-    commandType: 'record.section.replace',
-    baseVersion: '0123456789abcdef',
-    payload: { title: 'Synthetic summary', status: 'active' },
-    idempotencyKey: '00000000-0000-4000-8000-000000000101',
-    requestHash: 'a'.repeat(64),
-    ...overrides,
-  };
-}
 
 class RecordingJournal implements JournalLog, JournalMetrics {
   readonly events: unknown[][] = [];

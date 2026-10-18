@@ -1577,3 +1577,89 @@ Worked on 18 October 2026, after WE2, at the author's instruction: "Fix the CE1 
 | Tests skipped | none |
 
 After the author's WE2 commit, six files were on disk with CRLF endings; Prettier rewrote them to LF, with no change in content (`git ls-files --eol` shows LF in the index).
+
+## WE3 Relay and sweep
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; five stream mapping values await the author (WQ6 below), then the author's reproduction.
+
+### Assumptions verified
+
+- WU5, WU6, WU7, WU8 and WU22: read in the Plan stage, and now relied on (TTL identity, two ORed filters, per record failures with splitting and an SQS destination, a 5 minute deduplication window, 64 of 128 group characters).
+- WU9 and WU10: Appendix A as written (WQ5): every 2 minutes, 60 seconds' grace, 100 operations or 50 seconds a run.
+- WD1: answered; deviation entry 9.
+- Read for this phase, as installed: `aws-cdk-lib` 2.273.0 `DynamoEventSource`, `SqsDlq`, `FilterCriteria`, `Schedule` and `LambdaInvoke`; `@types/aws-lambda` 8.10.164 `DynamoDBStreamEvent` and `DynamoDBBatchResponse`. `FilterRule.isEqual` is typed `any`, so the filter patterns write out the one element lists it would build.
+
+### Dependency record (datum 0.13)
+
+`@aws-sdk/client-sqs` 3.1152.0: sends to the commands queue. The platform offers no other SQS client; it is the AWS SDK v3 family already pinned at this version, Apache-2.0, maintained by AWS, and provided by the Lambda runtime, so bundles leave it external. Tested through `aws-sdk-client-mock`. Replacing it means another SQS client, a small change behind `CommandQueueSender`.
+
+### Work completed
+
+- `message-group.ts` (pure, listed in `tree-checks/pure-modules.json`): the SHA-256 of `tenantId#recordId`.
+- `command-queue.ts`: `CommandMessageSchema` (strict: `messageVersion` from `contractVersions`, and `operationId`), `formatCommandMessage`, the `CommandQueueSender` interface and its SQS implementation. WE5's worker parses with the same schema.
+- `enqueue-operation.ts`: send, then move to `QUEUED` with the caller's origin; a stale transition after the send answers `already-moved`; a failed send leaves the operation `ACCEPTED` for the sweep.
+- `handlers/relay-handler.ts`: an operation insert is checked by `readOperationImage` and enqueued; a removal by time to live counts `JournalItemExpired` by item kind; anything else the filter should have kept out is passed by. On the first failure it reports that record and every later one, sends none of them, and logs and counts the batch once. A record without a sequence number fails the whole batch.
+- `handlers/sweep-handler.ts`: lists pending operations past the grace period, sends each one still `ACCEPTED`, logs once per run that sends, counts each recovery, stops at the batch or time limit and counts which, and logs the absent relay at cold start when `relayEnabled` is false.
+- `write-function-configuration.ts`, `write-path-observability.ts` and the two entry points, as RE5 built them for the read path.
+- `command-relay-construct.ts`: `CommandRelay`, the relay with its filtered mapping and `relay-failures` (a standard queue, SQS managed encryption), and the sweep on its schedule, each granted only what §10 lists. With `relayEnabled` false there is no relay and no mapping. The commands queue is a property, since WE5 builds it; WE8's `WritePath` holds the synth guard on `relayEnabled`. Spec 03 §10's layout names no file for this; the pieces are WE3's work and `WritePath` is WE8's.
+- `journal-store.ts` gained `readOperationImage`, which checks a stream image as any read is checked and touches no table. Spec 03 §4.4 lists five exports; this is a sixth, kept in the store so the item schema stays in one place.
+- Correction to WE1: the journal store stated `schemaVersion` 1 as its own literal, though `contractVersions.journalSchemaVersion` already states it (datum 0.7). It now takes the contract's.
+- The journal store test now takes `newOperation` from the shared write path fixtures, with the same values; none of its assertions changed.
+
+### Tests first
+
+`enqueue-operation.test.ts`, `relay-handler.test.ts`, `sweep-handler.test.ts`, `command-relay-construct.test.ts`, `write-function-configuration.test.ts` and `write-path-observability.test.ts` failed with `Cannot find module`, and `write-bundles.test.ts` with `Build failed`, before their source existed.
+
+Check 3 flagged `3_600`, the relay's maximum record age, as the contract's `Retry-After` bound restated. It is an hour of record age, not that bound, so it carries the exemption marker with that reason rather than a rewrite that would hide it from the check.
+
+| Planted regression | Result |
+|---|---|
+| message group without the tenant | 2 tests failed |
+| deduplicated by record instead of operation | 4 failed |
+| an extra field in the message body | 1 failed |
+| origin always `relay` | 2 failed |
+| a stale transition thrown | 1 failed |
+| any removal counted as an expiry | 1 failed |
+| later records sent after a failure | 1 failed |
+| only the failing record reported | 1 failed |
+| a failed batch not counted | 1 failed |
+| the stream image not checked | 1 failed |
+| idempotency inserts treated as operations | 1 failed, once a test was added: no test had sent the relay an idempotency insert |
+| the grace period ignored | 1 failed |
+| state not checked before sending | 1 failed |
+| recovery logged per operation | 1 failed |
+| the batch limit not counted | 1 failed |
+| the time limit ignored | 1 failed |
+| the absent relay not logged | 1 failed |
+| batches not split | 1 failed |
+| the filter selecting changes, not inserts | 1 failed |
+| the failure queue made FIFO | 1 failed, once replanted: the first plant gave the queue no `.fifo` name, so synth itself failed and no assertion was tested |
+| the sweep allowed to scan | 1 failed |
+| the relay allowed to read items | 1 failed |
+| the relay built when disabled | 1 failed |
+| the schedule every 5 minutes | 2 failed |
+| the relay switch read loosely | 1 failed |
+| the origin dimension misnamed | 1 failed |
+| an AWS SDK import in `message-group.ts` | check 2 failed: `Pure module: no AWS SDK` |
+
+Each planted file was restored byte for byte.
+
+### Decision needed from the author
+
+- **WQ6** The relay's stream mapping values. Blocks WE3's completion.
+    - Why open: §5.1 requires bounded retries, batch splitting and an on failure destination, and WU7 confirms each exists, but neither §5.1 nor Appendix A gives a value for any of them.
+    - Options, as built: batch size 10; 3 retries; a maximum record age of 1 hour; starting at `TRIM_HORIZON`; `relay-failures` kept 14 days. Otherwise, other values for any of them.
+    - Trade offs: more retries and a longer age ride out a longer DynamoDB or SQS fault before a record goes to `relay-failures`, but hold the shard behind it longer; the sweep recovers any operation the relay gives up on, so a lost record delays a command by about the grace period and a schedule interval, and never loses it. `TRIM_HORIZON` reads every record still in the stream when the mapping is created, where `LATEST` would skip those. `relay-failures` holds batch metadata only, for a person to read; 14 days is SQS's maximum and matches `commands-dlq` (WU12).
+    - Recommendation: the values as built.
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 58 files, 1,114 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the suite passes. It does on the agent's machine; complete once WQ6 is answered and the author reproduces it.
