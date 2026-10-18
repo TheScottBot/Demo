@@ -28,6 +28,7 @@ npm run synth
 | Read path | `services/read/test` | `npm test --workspace services/read` | locally; CI jobs 5 and 6 |
 | Mock providers | `services/mock-providers/test` | `npm test --workspace services/mock-providers` | locally; CI jobs 5 and 6 |
 | Synth assertions | `infra/test` | `npm test --workspace infra` | locally; CI jobs 5 and 6 |
+| Read checks against the local mock providers (Spec 02 RE6) | `infra/test/read.spec.ts` | `npx vitest run infra/test/read.spec.ts`, and within `npm test --workspace infra` | locally; CI jobs 5 and 6 |
 | Tree check logic | `tree-checks/test` | `npm test` | locally; CI jobs 5 and 6 |
 
 `npm test` runs all of them. The mock provider handlers are tested against `aws-sdk-client-mock` with a fake of the store table that refuses any request the store does not make. Tests are named as sentences: `describe` names the subject and `it` states the behaviour, after the reference implementations. Shared fixtures and doubles live in `packages/test-doubles`; no suite builds its own.
@@ -78,11 +79,11 @@ Only the author can clear these, and the agent never claims one has passed (datu
 
 | Gate | Owner | State |
 |---|---|---|
-| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1 to CE5 and RE1 to RE5 |
+| Reproduce each phase's automated criteria on a clean machine (datum Stage three) | every phase | outstanding for CE1 to CE5 and RE1 to RE6 |
 | See each CI job fail on a planted violation and pass, on GitHub | Spec 00 CE3 | outstanding: needs a push; proven locally only |
 | Install Node.js 24.22.0 locally (CQ5) | Spec 00 | outstanding; an action rather than a gate, listed so it is not lost |
 | The manual smoke check through the public API | Spec 01 EE5 | to be redefined under CQ6 in the Spec 01 Plan stage |
 | The deployed checks against the stubs | Spec 01 EE4 | to be redefined under CQ6 |
-| The deployed read checks | Spec 02 RE6 | no longer a gate: RQ1 makes RE6 an automated suite against the local mock providers |
+| The deployed read checks | Spec 02 RE6 | no longer a gate: RQ1 makes RE6 an automated suite, `infra/test/read.spec.ts`, against the local mock providers |
 | The latency target RU15 | Spec 02 RE6 | set aside under CQ6 (RQ2; `IMPLEMENTATION_DEVIATIONS.md` entry 7) |
 | The deployed write checks, and resolving the `poison-` operation | Spec 03 WE9 | to be redefined under CQ6 |

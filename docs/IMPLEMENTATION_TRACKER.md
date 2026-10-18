@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-Spec 00 is built up to CE6, which waits for the streams (WE8, EE3; RE5 is built). RE1 to RE5 are built; RE6, the automated suite against the local mock providers (RQ1), is next in Spec 02. CD1 freezes the contract once RE4 and WE2 pass against the doubles: RE4 has. The Spec 01 and Spec 03 Plan stages have not started.
+Spec 02 is built as far as it goes: RE1 to RE6 await reproduction, and RE7 is unscheduled under RD1. Spec 00 is built up to CE6, which waits for WE8 and EE3. CD1 freezes the contract once RE4 and WE2 pass against the doubles: RE4 has, so the Spec 03 Plan stage (then WE2) is the path to the freeze. The Spec 01 Plan stage has not started either.
 
 ## Anonymity
 
@@ -43,7 +43,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
 | Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `infra` |
-| Suite | 45 files, 997 tests, and all seven tree checks passing on 18 October 2026 |
+| Suite | 46 files, 1,005 tests, and all seven tree checks passing on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
@@ -78,7 +78,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | RE3 Fan-out | awaiting reproduction | CE1, CE2, CE5 | `provider-fan-out.ts`, proven pure; per provider deadline, budget and parent signal; adapters that ignore abort still time out |
 | RE4 Read handler | awaiting reproduction | CE1, CE2, CE5 | `read-handler.ts` and the disabled `read-cache-policy.ts`; every §2 to §5 row and RQ4 tested; the Lambda entry point moved to RE5 |
 | RE5 ReadPath construct | awaiting reproduction | CE1, CE2, CE5 | `read-path-construct.ts`, `read-handler-entry.ts`, configuration and Powertools observability; the entry bundle is proven free of CDK and test doubles; not wired into `infra` until CE6 |
-| RE6 Deployed checks against the mock providers | not started | RE4, CE4 | under RQ1, run locally against the local mock providers; no longer blocked on deployment |
+| RE6 Deployed checks against the mock providers | awaiting reproduction | RE4, CE4 | `infra/test/read.spec.ts`: under RQ1, the read entry point, configured as the construct deploys it, invoked directly against the local mock provider servers; Spec 02's seven checks plus one that nothing logged carries a key or the subject; CI run needs a push |
 | RE7 Read cache | not scheduled | RD1 | RD1 leaves it unscheduled |
 
 ## Spec 03 write path
@@ -130,7 +130,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 ## Open items for the author
 
-- Reproduce CE1 to CE5 and RE1 to RE5 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5 and RE1 to RE6 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
 - Install Node.js 24.22.0 locally (CQ5).
 

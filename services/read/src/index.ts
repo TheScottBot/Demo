@@ -10,6 +10,7 @@ export * from './record-merge';
 export * from './provider-fan-out';
 export * from './read-cache-policy';
 export * from './read-handler';
+export * from './read-function-environment';
 export * from './read-path-configuration';
 export * from './read-path-construct';
 export * from './read-path-observability';

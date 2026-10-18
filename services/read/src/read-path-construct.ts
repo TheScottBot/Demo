@@ -6,7 +6,6 @@ import {
   type ReadPathOutputs,
   type ReadPathProperties,
 } from '@demo/construct-contracts';
-import { providerIdentifiers } from '@demo/contracts';
 import {
   Duration,
   aws_cloudwatch as cloudwatch,
@@ -14,11 +13,9 @@ import {
   aws_iam as iam,
   aws_lambda as lambda,
 } from 'aws-cdk-lib';
+import { providerIdentifiers } from '@demo/contracts';
 import { Construct } from 'constructs';
-import { providerAReadAdapterSettings } from './adapters/provider-a-read-adapter';
-import { providerBReadAdapterSettings } from './adapters/provider-b-read-adapter';
-import { providerCReadAdapterSettings } from './adapters/provider-c-read-adapter';
-import { readPathSettings } from './read-path-settings';
+import { readFunctionEnvironment, readFunctionSecretArns } from './read-function-environment';
 
 // Spec 02 §7: the read path's one function, implementing the Spec 00 §3.11
 // interfaces exactly. The tuning values are constants here, as §7 requires.
@@ -36,12 +33,6 @@ const readFunctionSettings = {
   providerTimeoutRatePercent: 10,
 } as const;
 
-const providerSettings = [
-  providerAReadAdapterSettings,
-  providerBReadAdapterSettings,
-  providerCReadAdapterSettings,
-];
-
 export class ReadPath extends Construct implements ReadPathOutputs {
   readonly readHandler: lambda.IFunction;
 
@@ -58,41 +49,11 @@ export class ReadPath extends Construct implements ReadPathOutputs {
       }
       throw new Error('read-cache-not-built: RE7 is unscheduled under RD1');
     }
-    const providerConnections = providerIdentifiers.map((providerId) =>
-      properties.providers.filter((connection) => connection.providerId === providerId),
-    );
-    if (
-      properties.providers.length !== providerIdentifiers.length ||
-      providerConnections.some((matchingConnections) => matchingConnections.length !== 1)
-    ) {
-      throw new Error('read-path-needs-each-provider-once');
-    }
-    const connectionFor = (providerId: string) => {
-      const connection = properties.providers.find(
-        (candidate) => candidate.providerId === providerId,
-      );
-      if (connection === undefined) {
-        throw new Error('read-path-needs-each-provider-once');
-      }
-      return connection;
-    };
-
     const readFunction = createDemoNodejsFunction(this, 'ReadFunction', {
       stage: properties.stage,
       component: 'read',
       entry: readHandlerEntryPath,
-      environment: {
-        DEMO_STAGE: properties.stage,
-        PROVIDER_TIMEOUT_MILLISECONDS: String(readPathSettings.providerTimeoutMilliseconds),
-        FAN_OUT_BUDGET_MILLISECONDS: String(readPathSettings.fanOutBudgetMilliseconds),
-        ...Object.fromEntries(
-          providerSettings.flatMap((settings) => [
-            [settings.baseUrlVariable, connectionFor(settings.providerId).baseUrl],
-            // The secret's ARN, never its value (Spec 00 §2.3).
-            [settings.secretArnVariable, connectionFor(settings.providerId).secretArn],
-          ]),
-        ),
-      },
+      environment: readFunctionEnvironment(properties.stage, properties.providers),
       memorySize: readFunctionSettings.memoryMegabytes,
       timeout: readFunctionSettings.timeout,
       activeTracing: true,
@@ -105,7 +66,7 @@ export class ReadPath extends Construct implements ReadPathOutputs {
     readFunction.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['secretsmanager:GetSecretValue'],
-        resources: providerSettings.map((settings) => connectionFor(settings.providerId).secretArn),
+        resources: readFunctionSecretArns(properties.providers),
       }),
     );
 

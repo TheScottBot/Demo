@@ -1221,6 +1221,70 @@ Done when: the construct synthesises with the §7 settings and the §8 alarms, a
 
 - Wire `ReadPath` into `infra/lib/demo-platform.ts` in place of the read stub, with the mock provider connections and the alarm topic.
 
+## RE6 Checks against the mock providers
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17, under RQ1 and CQ6. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Scope as built
+
+- `infra/test/read.spec.ts`, at the path Spec 02 names. It loads the read function's entry point, `read-handler-entry.ts`, and invokes its exported handler directly with the shared event builder. The three mock providers run as local servers (`startLocalMockProviders`) on ports the operating system picks, over real HTTP.
+- The function's environment is the one the construct deploys: `read-function-environment.ts` now builds it, and the `ReadPath` construct and the suite both call it. The construct's check that each routing table provider appears exactly once moved there with it; the RE5 synth suite still covers it.
+- Secrets Manager is the one stand in: `aws-sdk-client-mock` answers each provider's secret ARN with that provider's synthetic API key.
+- The seed leaves out tenant-1's `record-0004`, so the tenant isolation row has a record that tenant-2 holds and tenant-1 does not.
+
+### Spec 00 changes
+
+- `vitest.config.ts` also runs `infra/test/**/*.spec.ts`, so a deployed check keeps the name its specification gives it.
+- `services/read` exports `./read-handler-entry`, for the suite alone; the bundle is still built from the source file.
+- `infra` gains development dependencies on `@demo/read`, `@demo/mock-providers`, `@demo/test-doubles`, `@demo/contracts`, `@aws-sdk/client-secrets-manager`, `aws-sdk-client-mock` and `@types/aws-lambda`, all at versions the tree already pins.
+
+### Checks
+
+Spec 02's seven, plus one the datum asks for:
+
+1. A normal record: 200, not partial, three `ok` sources and an ETag.
+2. The same request with that ETag: 304.
+3. `slow-b-`: 200 within the 2,500 ms budget, partial, provider-b `timeout`, no ETag, `private, max-age=0, must-revalidate`.
+4. `down-a-`: 200, partial, provider-a `error`.
+5. An unknown record: 404.
+6. A `tenant-2` record read with a `tenant-1` event: 404; read with a `tenant-2` event: 200, so the 404 is not vacuous.
+7. An event without `records:read`: 403.
+8. Everything the function wrote to standard output and standard error holds the absent cache log (proving the capture works) and neither any provider API key nor the subject (datum 0.15, CD5).
+
+### Tests first
+
+The suite was first not run at all: the harness matched only `*.test.ts` (`No test files found`). With the include added, it failed with `"./read-handler-entry" is not exported` before the subpath and `readFunctionEnvironment` existed.
+
+Each regression was planted with only `read.spec.ts` running, so a catch is RE6's own:
+
+| Planted regression | Result |
+|---|---|
+| tenant header not sent to the providers | 6 of 8 failed |
+| `If-None-Match` not forwarded to the providers | 1 failed |
+| provider base URLs crossed in the environment | 6 failed |
+| the secret ARN used as the API key | 6 failed |
+| scope not required | 1 failed |
+| the entry point logs the event | 1 failed |
+| provider timeout and budget outlasting a slow provider | 1 failed, once replanted: the first plant repeated an object key, and its failure gave no test count, so it proved nothing and was redone as a valid change |
+
+Each planted file was restored byte for byte.
+
+### What this does not cover
+
+Recorded under `IMPLEMENTATION_DEVIATIONS.md` entry 3: the suite runs the entry point's TypeScript source in Node.js v22.23.2, not the bundle on the Lambda runtime; Secrets Manager, IAM and the network between function and providers are not exercised; Powertools tracing is off outside Lambda, so no trace is produced.
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 46 files, 1,005 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: under RQ1, the suite passes locally and in CI. It does on the agent's machine; complete once the author reproduces it, and CI is seen to run it after a push.
+
 # Spec 03 write path
 
 Plan stage not started.

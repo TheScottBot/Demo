@@ -6,7 +6,8 @@
   "description": "Spec 02 read path: GET /v1/records/{recordId}, provider fan-out, merge, aggregate ETag and the ReadPath construct.",
   "license": "MIT",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./read-handler-entry": "./src/read-handler-entry.ts"
   },
   "scripts": {
     "test": "vitest run --root ../.. services/read"

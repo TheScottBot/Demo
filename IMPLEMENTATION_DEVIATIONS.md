@@ -26,7 +26,7 @@ Each entry is history once its decision is given; a later change to it is a date
 - **Done instead:** the family is built as Lambda functions and CDK stacks and synthesised for every stage, but runs locally: mock providers as local servers, handlers invoked directly with the shared event builder, the gateway covered by synth assertions. Gateway behaviour that nothing local can exercise (the 401 responses, CORS preflight, throttling, the JWT authoriser itself) is unverified, and each owner's Plan stage lists it here as it is reached.
 - **Why:** the author's decision to run entirely locally.
 - **Author's decision:** CQ6, 18 October 2026, in the author's words: "for AWS we will build knowing it's going to be there and using lambdas but we will run entirely locally."
-- **Covering test:** the synth assertions in `infra/test`; the stream specific coverage is added in each stream's phases.
+- **Covering test:** the synth assertions in `infra/test`; the stream specific coverage is added in each stream's phases. For Spec 02, `infra/test/read.spec.ts` (RE6) runs the read entry point against the local mock providers; it runs TypeScript source on the local Node.js rather than the bundle on the Lambda runtime, and stubs Secrets Manager, so IAM, the network to the providers and tracing are unverified.
 
 ## 4. CU4 is answered without its experiment
 
