@@ -1194,6 +1194,92 @@ Every Spec 01 phase the agent can do is done, on 18 October 2026:
 
 Still the author's: `SECURITY.md` in the author's own words (§6), and reproducing EE1 to EE3. CE6, wiring the real constructs, is a Spec 00 phase and was not started.
 
+## Local demonstration
+
+Worked on 18 October 2026, at the author's request, in their words: "Yup do a small local server demo or servers if we're keeping boundaries as they are." The author also gave this authority: "Still have permission to make decisions just document them so I know what was a decision." No specification phase asks for this work, so it has no phase identifier. `docs/LOCAL_DEMO.md` says how to run it.
+
+### What was built
+
+- `services/local-demo`, a new workspace:
+  - `local-function-server.ts`: the local stand-in for Lambda. `POST /invoke/<function>` with a payload format 2.0 event answers with the handler's result. A function that throws answers 502, with no detail.
+  - `local-gateway.ts`: the local stand-in for the gateway.
+    - It serves only the contract's three routes, matched from `publicRoutes`, and answers anything else with the gateway's own 404.
+    - It checks a fixed table of demo tokens. A missing or unknown token is the gateway's own 401.
+    - It sends each route's event over HTTP to that route's function server, and answers 500 if the function fails or cannot be reached.
+    - It refuses bodies over 1 MiB with 413, and writes one access log line per request, holding no token or subject.
+  - `local-read-service.ts`: the real read function's entry point, configured as `ReadPath` configures it, behind its own function server.
+  - `local-write-service.ts`: the real intake and status functions behind their own function server, with WE9's local model of the write path behind them, and a pump that runs the relay and worker.
+  - `local-demo.ts`: the ports, and `startLocalDemo`, which starts every piece in one process for the end to end test.
+  - `bin`: one start script per piece, and `start-local-demo.ts`, run by `npm run demo:local`, which starts each piece in its own process.
+- `services/write/test/support/local-write-path.ts`, two additive options: `mintOperationId` (the demo passes real ULIDs; WE9 keeps its sequential identifiers), and `handlers`, which exposes the intake and status functions themselves.
+
+### Decisions made under the author's authority
+
+- **Separate processes, one per boundary.** The gateway (8080), the read service (8081), the write service (8082) and the three mock providers (4101 to 4103) each run in their own process, as they are separate services deployed. Each piece can also be started alone in its own terminal. The end to end test starts them in one process, on ports the system picks, still talking only over HTTP.
+- **Demo tokens instead of JWTs.** Three fixed tokens stand for verified tokens' claims: a reader and a writer for `tenant-1`, and a writer for `tenant-2`. Their scopes are in the demo pool's resource server form (`demo/records:read`), so the demo exercises contract 1.2.0 (EQ6). Verifying real signatures would need a JWT library and a local key set, and would test the stand-in, not API Gateway.
+- **No CORS, throttling or alarms at the local gateway.** Those are configuration the EE3 synth suites assert, and a browser client is no part of the demo.
+- **WE9's write path model, not a new one.** The demo reuses the model WE9 tests (the journal and its stream, the relay, the FIFO queue, the dead letter queue, the sweep), rather than a second model.
+- **The pump.** The relay and worker run after every accepted command, and every 250 ms. The model's clock is moved on to the wall clock before each run. A retry's backoff is not waited out, so a retried command settles at once.
+- **Bodies over 1 MiB refused with 413.** This keeps the demo bounded, far above any command the contract allows.
+- **Ctrl+C stops the whole tree.** On Windows, killing a shell-spawned child leaves its server running and holding its port, which the first trial showed. The launcher stops each child's whole process tree with `taskkill /T`. A trial in a terminal showed Ctrl+C freeing every port.
+
+### Found while building it
+
+- The prose check's identifying-term list held a misspelling: it guarded "healthscare" instead of the one word sector name. A test first, then the fix: `tree-checks/test/prose-scan.test.ts` has the case, and `tree-checks/src/prose-scan.ts` the corrected term. Nothing in the tree or in any commit used the term.
+- A search of the working tree and of every commit on every branch found no identifying term.
+
+### Tests first
+
+Each of the three test files failed with `Cannot find module` before its source existed. One assertion then failed on the first build: it read `record.summary`, where the read response holds `record.sections.summary`, so the assertion was wrong, not the code. Four assertions that lint refused for `any` values were rewritten without matchers. The tests:
+
+- `local-function-server.test.ts`: the event handed over and the result returned; 502, 404, 405 and 400.
+- `local-gateway.test.ts`:
+  - each route reaching its own function, with its path parameters, headers, body and token claims;
+  - the gateway's 404 for four unmatched requests, and its 401 for no token, an unknown token or a header that is not a bearer token;
+  - a missing scope left to the handler;
+  - 500 when a function is unreachable, and 413;
+  - the log line.
+- `local-demo.test.ts`, end to end over HTTP:
+  - a whole read; a partial read with a provider down; a 304;
+  - a command applied and seen on the next read; a CONFLICT that never overwrites;
+  - a 403 from the handler for a reader's command; a 404 for another tenant's operation; a 401 at the gateway.
+
+| Planted regression | Result |
+|---|---|
+| an unknown token let through | 4 failed |
+| a route pattern left unanchored | 1 failed |
+| the method not matched | 1 failed |
+| the tenant taken from another token | 2 failed |
+| the log line's route replaced | 1 failed |
+| a failed function answered 200 by the gateway | 1 failed |
+| no body limit | 1 failed |
+| the handler's headers dropped | 4 failed |
+| a thrown function answered 200 | 1 failed |
+| any method invokes | 1 failed |
+| the pump's timer removed | not caught: the pump after each command settles everything; the timer covers a command accepted while a run is under way |
+| no pump at all | 2 failed |
+| the wrong provider keys | 4 failed |
+
+Each planted file was restored byte for byte.
+
+The demo was also run as separate processes, in a terminal: `npm run demo:local`; then a read (200), a command (202) and status polls until `SUCCEEDED`, through the gateway; then Ctrl+C, after which no port was held. A probe of each misbehaving record set the table in `docs/LOCAL_DEMO.md`.
+
+### What it proves, and what it does not
+
+It proves the code end to end over HTTP across the deployed boundaries. It does not prove AWS: the token check, the journal, stream and queue, and Secrets Manager are stand-ins, and backoff is not waited out. `docs/LOCAL_DEMO.md` lists them.
+
+### Reproduction report
+
+The first gate failed one check: the single definition check found `Content-Type` written out in two places. Both now take the name from the contract's `httpHeaders`, and the check passes.
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0, once the header names were fixed |
+| Full suite | 78 files, 1,407 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
 # Spec 02 read path
 
 Plan stage worked on 18 October 2026, after reading Spec 02 Draft 2 once, top to bottom. Status: evidence gathered; author decisions outstanding (Decisions still needing the author, at the end of this section).

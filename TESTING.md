@@ -28,6 +28,7 @@ npm run synth
 | Read path | `services/read/test` | `npm test --workspace services/read` | locally; CI jobs 5 and 6 |
 | Write path | `services/write/test` | `npm test --workspace services/write` | locally; CI jobs 5 and 6 |
 | Entry point | `services/entry/test` | `npm test --workspace services/entry` | locally; CI jobs 5 and 6 |
+| Local demonstration | `services/local-demo/test` | `npm test --workspace services/local-demo` | locally; CI jobs 5 and 6 |
 | Mock providers | `services/mock-providers/test` | `npm test --workspace services/mock-providers` | locally; CI jobs 5 and 6 |
 | Synth assertions | `infra/test` | `npm test --workspace infra` | locally; CI jobs 5 and 6 |
 | Read checks against the local mock providers (Spec 02 RE6) | `infra/test/read.spec.ts` | `npx vitest run infra/test/read.spec.ts`, and within `npm test --workspace infra` | locally; CI jobs 5 and 6 |

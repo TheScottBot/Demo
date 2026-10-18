@@ -232,7 +232,7 @@ const reversedIdentifyingTerms = [
   'gnisrun',
   'noitpircserp',
   'noitacidem',
-  'eracshtlaeh',
+  'erachtlaeh',
   'sisongaid',
   'sesongaid',
 ];

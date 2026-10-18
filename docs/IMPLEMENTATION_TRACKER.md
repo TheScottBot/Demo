@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-Spec 01 is built as far as the agent can take it: EE1 to EE3 await reproduction, EE4 is set aside, and EE5's `npm run smoke:local` waits on the author's own run. `DemoApi` is wired into `infra` on the demo user pool. Specs 02 and 03 are built as far as they go (RE1 to RE6 and WE1 to WE9 await reproduction). CE6 (wiring the real constructs) is unblocked and not started. The contract is frozen at `@demo/contracts` 1.2.0, since EQ6.
+Spec 01 is built as far as the agent can take it: EE1 to EE3 await reproduction, EE4 is set aside, and EE5's `npm run smoke:local` waits on the author's own run. `DemoApi` is wired into `infra` on the demo user pool. Specs 02 and 03 are built as far as they go (RE1 to RE6 and WE1 to WE9 await reproduction). CE6 (wiring the real constructs) is unblocked and not started. A local demonstration runs the platform as separate local servers: `npm run demo:local`, described in `docs/LOCAL_DEMO.md`. The contract is frozen at `@demo/contracts` 1.2.0, since EQ6.
 
 ## Anonymity
 
@@ -149,6 +149,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 - Install Node.js 24.22.0 locally (CQ5).
 - Run `npm run smoke:local` and record the result in `TESTING.md` (EE5).
 - Review the choices EE3 made under your delegated authority (EE3 record): the allowed origin `http://localhost:3000`, the access log group's name, and CE5's changed assertions.
+- Review the decisions the local demonstration made under your authority (its record): separate processes, demo tokens, no CORS at the local gateway, WE9's write model, the pump, and the 1 MiB limit.
 - Write `SECURITY.md` (Spec 01 §6) in your own words, or give them to the agent: that handlers trust gateway verified claims; the ED2 fairness limit; the ED3 401 body; what the demo user pool is and is not fit for.
 
 ## Findings awaiting their owners

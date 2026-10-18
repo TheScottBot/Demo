@@ -1,0 +1,30 @@
+{
+  "name": "@demo/local-demo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A local demonstration of the platform: a stand-in for the gateway, the read and write functions behind their own local servers, and the mock providers, each a separate process on its own port.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --root ../.. services/local-demo",
+    "start": "tsx bin/start-local-demo.ts",
+    "start:gateway": "tsx bin/start-local-gateway.ts",
+    "start:read": "tsx bin/start-local-read-service.ts",
+    "start:write": "tsx bin/start-local-write-service.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "3.1152.0",
+    "@demo/construct-contracts": "0.1.0",
+    "@demo/contracts": "1.2.0",
+    "@demo/mock-providers": "0.1.0",
+    "@demo/read": "0.1.0",
+    "@demo/test-doubles": "0.1.0",
+    "@demo/write": "0.1.0",
+    "@types/aws-lambda": "8.10.164",
+    "aws-sdk-client-mock": "4.1.0",
+    "ulid": "3.0.2"
+  }
+}

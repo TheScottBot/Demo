@@ -131,6 +131,8 @@ describe('identifying terms', () => {
     ['a professional', 'esrun'],
     ['a place', 'latipsoh'],
     ['a domain noun', 'noitpircserp'],
+    // Found missing by the local demo phase: the list held a misspelling.
+    ['the sector, one word', 'erachtlaeh'],
   ])('finds %s in prose', (_caseName, reversedTerm) => {
     expect(rulesFound('notes.md', `A line about the ${usWord(reversedTerm)} here.`)).toEqual([
       'identifying-term',

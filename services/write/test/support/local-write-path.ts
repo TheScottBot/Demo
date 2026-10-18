@@ -1,5 +1,5 @@
 import { marshall } from '@aws-sdk/util-dynamodb';
-import type { ProviderIdentifier, WriteAdapter } from '@demo/contracts';
+import type { DemoHttpHandler, ProviderIdentifier, WriteAdapter } from '@demo/contracts';
 import type { LocalMockProviderConnection } from '@demo/mock-providers';
 import { buildLambdaContext, buildVerifiedClaimsEvent, publicRouteNamed } from '@demo/test-doubles';
 import type { APIGatewayProxyStructuredResultV2, DynamoDBRecord, SQSRecord } from 'aws-lambda';
@@ -71,6 +71,9 @@ export interface LocalWritePath {
   readonly providerCalls: ProviderCall[];
   readonly metrics: unknown[][];
   operator(): DeadLetterOperator;
+  // The intake and status functions themselves, for a caller that builds its
+  // own events, as the local demo's gateway stand-in does.
+  readonly handlers: { readonly intake: DemoHttpHandler; readonly status: DemoHttpHandler };
   stop(): void;
 }
 
@@ -95,6 +98,9 @@ export function createLocalWritePath(options: {
   relayEnabled: boolean;
   providerConnections: readonly LocalMockProviderConnection[];
   startAt?: Date;
+  // Defaults to sequential identifiers, so a suite's operations are known in
+  // advance; the local demo passes real ULIDs.
+  mintOperationId?: () => string;
 }): LocalWritePath {
   let currentTime = (options.startAt ?? new Date('2026-10-18T09:30:00.000Z')).getTime();
   const now = () => new Date(currentTime);
@@ -186,10 +192,12 @@ export function createLocalWritePath(options: {
       countIdempotentReplay: () => metrics.push(['IdempotentReplay']),
       countIdempotencyKeyReused: () => metrics.push(['IdempotencyKeyReused']),
     },
-    mintOperationId: () => {
-      mintedOperations += 1;
-      return `01JB${String(mintedOperations).padStart(22, '0')}`;
-    },
+    mintOperationId:
+      options.mintOperationId ??
+      (() => {
+        mintedOperations += 1;
+        return `01JB${String(mintedOperations).padStart(22, '0')}`;
+      }),
   });
   const statusHandler = createStatusHandler({
     journalStore,
@@ -396,6 +404,7 @@ export function createLocalWritePath(options: {
             metrics.push(['OperatorAction', action, outcome]),
         },
       }),
+    handlers: { intake: intakeHandler, status: statusHandler },
     stop: () => {
       journalTable.restore();
     },
