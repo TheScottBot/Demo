@@ -39,4 +39,13 @@ export const writePathSettings = {
   // operation awaits an operator, who acts on a person's time.
   statusRetryAfterInProgressSeconds: 2,
   statusRetryAfterAwaitingOperatorSeconds: 60,
+  // WU21, adopted by the author on 18 October 2026 (WQ5): a dead letter
+  // visible for a minute; the oldest command older than 300 seconds; the
+  // sweep recovering for 3 periods running; the relay's iterator more than a
+  // minute behind; any rejected message or worker error in 5 minutes.
+  alarmPeriodMinutes: 5,
+  deadLetterAlarmPeriodMinutes: 1,
+  commandQueueAgeAlarmSeconds: 300,
+  sweepRecoveringAlarmPeriods: 3,
+  relayIteratorAgeAlarmMilliseconds: 60_000,
 } as const;

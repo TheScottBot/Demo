@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-WE1 to WE7 are built and await reproduction. WE8 (the `WritePath` construct) is next: it joins the journal, relay, sweep and worker constructs, and builds the intake and status functions. The contract is frozen at `@demo/contracts` 1.1.0. Spec 02 is built as far as it goes (RE1 to RE6 await reproduction). The Spec 01 Plan stage has not started.
+WE1 to WE8 are built and await reproduction. WE9, the local suite against the mock providers (WQ1), is next in Spec 03. CE6 now waits only on Spec 01 EE3, whose Plan stage has not started. The contract is frozen at `@demo/contracts` 1.1.0. Spec 02 is built as far as it goes (RE1 to RE6 await reproduction).
 
 ## Anonymity
 
@@ -43,7 +43,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
 | Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `services/write`, `infra` |
-| Suite | 68 files, 1,251 tests, and all seven tree checks passing on 18 October 2026 |
+| Suite | 69 files, 1,278 tests, and all seven tree checks passing on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
@@ -55,7 +55,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | CE3 Tree wide checks | awaiting reproduction | CE1 | seven checks in `.github/workflows/tree-checks.yml`, each proven locally on a planted violation; seeing them run on GitHub needs a push (author gate); `TESTING.md` and `IMPLEMENTATION_DEVIATIONS.md` written |
 | CE4 Mock providers | awaiting reproduction | CE1, CE2 | `services/mock-providers`: handlers, DynamoDB store, seed scripts and construct, all synthesising; local servers run the same handler (`npm start --workspace services/mock-providers`); deployment and seeding replaced under CQ6 |
 | CE5 Construct contracts and stubs | awaiting reproduction | CE1 | `packages/construct-contracts` and `infra`: §3.11 interfaces, naming, stubs, Powertools adapter, one stack per stage; `DemoApi` wiring waits for EE1 (circular as drafted); amended in RE5 with the `./runtime` subpath and `activeTracing` |
-| CE6 Wiring real constructs | not started | RE5, WE8, EE3 | RE5 is built; `ReadPath` replaces `StubReadPath` here |
+| CE6 Wiring real constructs | not started | RE5, WE8, EE3 | RE5 and WE8 are built; `ReadPath` and `WritePath` replace the stubs here; waits on EE3 |
 
 ## Spec 01 entry point
 
@@ -93,7 +93,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | WE5 Worker | awaiting reproduction | CE1, CE2, CE5 | `worker-handler.ts`, `retry-backoff.ts` (pure), the `CommandWorker` construct with both queues; carries the covering tests of deviation entries 9 and 11 |
 | WE6 Status handler | awaiting reproduction | CE1, CE2, CE5 | `status-handler.ts`, requiring `records:write` (WD4); its function is WE8's |
 | WE7 Operator tooling | awaiting reproduction | CE1, CE2, CE5 | `dead-letter-decisions.ts` (pure), the operator, and the `dlq:inspect` and `dlq:resolve` scripts; built and tested, not run (CQ6) |
-| WE8 WritePath construct | not started | WE1 to WE7 | |
+| WE8 WritePath construct | awaiting reproduction | WE1 to WE7 | `WritePath`, the intake and status functions and entries, and §11's six alarms; not wired into `infra` until CE6 |
 | WE9 Deployed checks against the mock providers | not started | WE1 to WE7, CE4 | under WQ1, an automated local suite with an in-memory journal, stream and queue; resolving the `poison-` operation needs a deployed stage, raised again at WE7 |
 
 ## Decisions
@@ -138,7 +138,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 ## Open items for the author
 
-- Reproduce CE1 to CE5, RE1 to RE6 and WE1 to WE7 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5, RE1 to RE6 and WE1 to WE8 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
 - Install Node.js 24.22.0 locally (CQ5).
 

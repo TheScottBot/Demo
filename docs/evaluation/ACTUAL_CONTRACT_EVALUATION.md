@@ -1986,3 +1986,71 @@ Done when: the suite passes. It does on the agent's machine; complete once the a
 |---|---|---|
 | Spec 03 §8.2 | `OperatorAction` is emitted through Powertools, which writes an embedded metric format line to the terminal; CloudWatch takes those from a Lambda's logs, not from an operator's terminal, so the count is printed but not ingested | when a stage is deployed: publish it with `PutMetricData`, or ship the scripts' output to a log group with a metric filter |
 | Spec 03 WE9 | resolving the `poison-` operation with `dlq:resolve:dev` remains an author gate needing a deployed stage (WQ1) | as WE9's local suite: drive the operator against the in-memory queue |
+
+## WE8 WritePath construct
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Assumptions verified
+
+- WU20 and WU21: Appendix A as written (WQ5). WU21's iterator age metric exists as `IteratorAge` in `AWS/Lambda`, in milliseconds (Plan stage).
+- Spec 00 CU2: functions through `createDemoNodejsFunction`, as every stream's are.
+- Read for this phase, as installed: `aws-cdk-lib` 2.273.0 `Queue.metricApproximateNumberOfMessagesVisible`, `Queue.metricApproximateAgeOfOldestMessage`, `IFunction.metric` and `IFunction.metricErrors`.
+
+### Work completed
+
+- `write-path-construct.ts`: `WritePath`, implementing `WritePathProperties` and `WritePathOutputs` exactly.
+  - It joins `CommandJournal` (WE1), `CommandWorker` and its queues (WE5) and `CommandRelay` (WE3), and builds the intake (256 MB, 5 seconds) and status (256 MB, 3 seconds) functions, which it hands the gateway as `commandHandler` and `statusHandler`.
+  - Intake may put and get on the journal (the transaction, and a replay's read); status may only get.
+  - Synth fails with `relay-disabled-outside-test` when `relayEnabled` is false in any stage but `test`.
+  - §11's six alarms, each to the alarm topic, missing data not breaching:
+    - `CommandsDeadLetterNotEmpty`: a visible dead letter for a minute.
+    - `CommandQueueAgeHigh`: the oldest command above 300 seconds.
+    - `SweepRecovering`: `SweepRecovered` above 0 for 3 periods running.
+    - `RelayIteratorAgeHigh`: the relay's iterator age above 60 seconds, raised only when the relay exists.
+    - `QueueMessageRejected`: any rejection, summed across every reason §6.3 names.
+    - `WorkerErrors`: any worker function error in 5 minutes.
+- `handlers/intake-handler-entry.ts` and `handlers/status-handler-entry.ts`: the two remaining entry points, with Powertools problem handling and `ulid` for operation identifiers. `write-path-observability.ts` gained the intake's metrics and both handlers' `operationId` binding.
+- `ulid` 3.0.2 joins `services/write`, the version `packages/contracts` already pins (CE1's dependency record).
+- The construct is not wired into `infra`: that is Spec 00 CE6.
+
+### Tests first
+
+`write-path-construct.test.ts` failed with `Cannot find module`, and the bundle test's new intake and status rows with a failed build, before their source existed. The synth suite asserts every row of §10's table, each function's permissions and nothing more, no permission on `commands-dlq` for any function, no VPC, each alarm, the relay guard in dev, stub and demo, and the provider check.
+
+| Planted regression | Result |
+|---|---|
+| the relay disabled in dev allowed | 2 tests failed |
+| intake allowed to update | 1 failed |
+| status allowed to write | 1 failed |
+| intake given 512 MB | 1 failed |
+| status given 5 seconds | 1 failed |
+| the outputs swapped | 1 failed |
+| the dead letter alarm over 5 minutes | 1 failed |
+| the queue age threshold doubled | 1 failed |
+| sweep recovering on one period | 1 failed |
+| no relay iterator alarm | 2 failed |
+| a rejection reason left out of the alarm | 1 failed |
+| alarms not sent to the topic | 1 failed |
+| missing data breaching | 1 failed |
+| worker errors measured on intake | 1 failed, once an assertion was added: the alarm test had checked the metric, not which function it measured |
+| the sweep metric without its service dimension | 1 failed |
+
+Each planted file was restored byte for byte.
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 69 files, 1,278 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the synth suite passes. It does on the agent's machine; complete once the author reproduces it.
+
+### For CE6 and WE9
+
+- CE6: wire `WritePath` into `infra/lib/demo-platform.ts` in place of `StubWritePath`, with the mock provider connections, the alarm topic and `relayEnabled` false in `test` alone. CE6 also waits on Spec 01 EE3.
+- WE9: under WQ1, its local suite can join the real intake, relay, sweep, worker and status handlers through WE1's fake table and an in-memory FIFO queue, against the local mock providers.

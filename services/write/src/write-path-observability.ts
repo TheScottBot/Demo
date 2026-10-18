@@ -1,7 +1,9 @@
 import { MetricUnit } from '@aws-lambda-powertools/metrics';
 import { createPowertoolsProblemHandling } from '@demo/construct-contracts/runtime';
 import type { WriteAdapterMetrics } from './adapters/http-write-adapter';
+import type { IntakeLog, IntakeMetrics } from './handlers/intake-handler';
 import type { RelayLog, RelayMetrics } from './handlers/relay-handler';
+import type { StatusLog } from './handlers/status-handler';
 import type { SweepLog, SweepMetrics } from './handlers/sweep-handler';
 import type { WorkerLog, WorkerMetrics } from './handlers/worker-handler';
 import type { JournalLog, JournalMetrics } from './journal-store';
@@ -12,14 +14,21 @@ import type { JournalLog, JournalMetrics } from './journal-store';
 
 export function createPowertoolsWriteObservability(options: {
   stage: 'dev' | 'stub' | 'test' | 'demo';
-  component: 'write-relay' | 'write-sweep' | 'write-worker';
+  component: 'write-intake' | 'write-status' | 'write-relay' | 'write-sweep' | 'write-worker';
 }) {
-  const { logger, metricsPublisher, tracer, metricsNamespace, serviceName } =
-    createPowertoolsProblemHandling({
-      stage: options.stage,
-      serviceName: 'write',
-      component: options.component,
-    });
+  const {
+    log: problemLog,
+    metrics: problemMetrics,
+    logger,
+    metricsPublisher,
+    tracer,
+    metricsNamespace,
+    serviceName,
+  } = createPowertoolsProblemHandling({
+    stage: options.stage,
+    serviceName: 'write',
+    component: options.component,
+  });
 
   const emit = (
     metricName: string,
@@ -133,6 +142,23 @@ export function createPowertoolsWriteObservability(options: {
       emit('TimeToTerminalState', MetricUnit.Milliseconds, milliseconds, [['state', state]]);
     },
   };
+  // §11: operationId on every line once it is known.
+  const bindOperation = (operationId: string) => {
+    logger.appendKeys({ operationId });
+  };
+  const intakeLog: IntakeLog = { bindOperation };
+  const statusLog: StatusLog = { bindOperation };
+  const intakeMetrics: IntakeMetrics = {
+    countCommandAccepted: (providerId) => {
+      count('CommandsAccepted', [['providerId', providerId]]);
+    },
+    countIdempotentReplay: () => {
+      count('IdempotentReplay');
+    },
+    countIdempotencyKeyReused: () => {
+      count('IdempotencyKeyReused');
+    },
+  };
   const adapterMetrics: WriteAdapterMetrics = {
     countRetryAfterIgnored: (providerId) => {
       count('ProviderRetryAfterIgnored', [['providerId', providerId]]);
@@ -140,6 +166,11 @@ export function createPowertoolsWriteObservability(options: {
   };
 
   return {
+    problemLog,
+    problemMetrics,
+    intakeLog,
+    intakeMetrics,
+    statusLog,
     adapterMetrics,
     workerLog,
     workerMetrics,

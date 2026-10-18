@@ -19,6 +19,14 @@ const entries = {
     fileURLToPath(new URL('../src/handlers/worker-handler-entry.ts', import.meta.url)),
     'worker-handler.ts',
   ],
+  intake: [
+    fileURLToPath(new URL('../src/handlers/intake-handler-entry.ts', import.meta.url)),
+    'intake-handler.ts',
+  ],
+  status: [
+    fileURLToPath(new URL('../src/handlers/status-handler-entry.ts', import.meta.url)),
+    'status-handler.ts',
+  ],
 } as const;
 
 describe('the write path bundles', () => {

@@ -22,6 +22,7 @@ export * from './operation-status-mapping';
 export * from './request-hash';
 export * from './retry-backoff';
 export * from './write-function-configuration';
+export * from './write-path-construct';
 export * from './write-path-observability';
 export * from './operator/dead-letter-decisions';
 export * from './operator/dead-letter-operator';
