@@ -31,7 +31,17 @@ export interface FakeCommandJournalTable {
   itemAt(partitionKey: string, sortKey: string): StoredItem | undefined;
   // The next request of this kind fails with this error, once.
   failNext(command: 'TransactWrite' | 'Update' | 'Get' | 'Query', failure: Error): void;
+  // What the table's stream would carry since the last call, oldest first:
+  // an insert with its new image, a change with its old and new (§4).
+  takeStreamRecords(): FakeStreamRecord[];
   restore(): void;
+}
+
+export interface FakeStreamRecord {
+  readonly eventName: 'INSERT' | 'MODIFY';
+  readonly sequenceNumber: string;
+  readonly newImage: StoredItem;
+  readonly oldImage: StoredItem | undefined;
 }
 
 export const fakeJournalTableName = 'demo-dev-command-journal';
@@ -154,6 +164,17 @@ export function createFakeCommandJournalTable(): FakeCommandJournalTable {
   const items = new Map<string, StoredItem>();
   const calls: { command: string; input: Record<string, unknown> }[] = [];
   const pendingFailures = new Map<string, Error>();
+  const streamRecords: FakeStreamRecord[] = [];
+  let nextSequenceNumber = 100;
+  const recordChange = (oldImage: StoredItem | undefined, newImage: StoredItem) => {
+    nextSequenceNumber += 1;
+    streamRecords.push({
+      eventName: oldImage === undefined ? 'INSERT' : 'MODIFY',
+      sequenceNumber: String(nextSequenceNumber),
+      newImage: structuredClone(newImage),
+      oldImage: oldImage === undefined ? undefined : structuredClone(oldImage),
+    });
+  };
 
   const takeFailure = (command: string): void => {
     const failure = pendingFailures.get(command);
@@ -208,6 +229,7 @@ export function createFakeCommandJournalTable(): FakeCommandJournalTable {
     }
     for (const putItem of puts) {
       items.set(itemKey(putItem['partitionKey'], putItem['sortKey']), structuredClone(putItem));
+      recordChange(undefined, putItem);
     }
     return {};
   });
@@ -254,6 +276,7 @@ export function createFakeCommandJournalTable(): FakeCommandJournalTable {
       expressionValues,
     );
     items.set(storageKey, updatedItem);
+    recordChange(storedItem, updatedItem);
     return { Attributes: structuredClone(updatedItem) };
   });
 
@@ -333,6 +356,7 @@ export function createFakeCommandJournalTable(): FakeCommandJournalTable {
       );
     },
     itemAt: (partitionKey, sortKey) => items.get(itemKey(partitionKey, sortKey)),
+    takeStreamRecords: () => streamRecords.splice(0, streamRecords.length),
     failNext: (command, failure) => {
       pendingFailures.set(command, failure);
     },

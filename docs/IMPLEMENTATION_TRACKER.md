@@ -6,7 +6,7 @@ Last updated: 18 October 2026.
 
 ## Next up
 
-WE1 to WE8 are built and await reproduction. WE9, the local suite against the mock providers (WQ1), is next in Spec 03. CE6 now waits only on Spec 01 EE3, whose Plan stage has not started. The contract is frozen at `@demo/contracts` 1.1.0. Spec 02 is built as far as it goes (RE1 to RE6 await reproduction).
+Spec 03 is built as far as it goes: WE1 to WE9 await reproduction. Spec 02 is too (RE1 to RE6). What remains is Spec 01, whose Plan stage has not started, and Spec 00 CE6, which waits on Spec 01 EE3. The contract is frozen at `@demo/contracts` 1.1.0.
 
 ## Anonymity
 
@@ -43,7 +43,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | Local Node.js | v22.23.2; the author is to install 24.22.0 (CQ5, open) |
 | AWS | nothing is deployed; the family runs locally (CQ6) |
 | Workspaces | `packages/contracts`, `packages/test-doubles`, `packages/construct-contracts`, `services/mock-providers`, `services/read`, `services/write`, `infra` |
-| Suite | 69 files, 1,278 tests, and all seven tree checks passing on 18 October 2026 |
+| Suite | 70 files, 1,289 tests, and all seven tree checks passing on 18 October 2026 |
 
 ## Spec 00 shared contracts
 
@@ -94,7 +94,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 | WE6 Status handler | awaiting reproduction | CE1, CE2, CE5 | `status-handler.ts`, requiring `records:write` (WD4); its function is WE8's |
 | WE7 Operator tooling | awaiting reproduction | CE1, CE2, CE5 | `dead-letter-decisions.ts` (pure), the operator, and the `dlq:inspect` and `dlq:resolve` scripts; built and tested, not run (CQ6) |
 | WE8 WritePath construct | awaiting reproduction | WE1 to WE7 | `WritePath`, the intake and status functions and entries, and §11's six alarms; not wired into `infra` until CE6 |
-| WE9 Deployed checks against the mock providers | not started | WE1 to WE7, CE4 | under WQ1, an automated local suite with an in-memory journal, stream and queue; resolving the `poison-` operation needs a deployed stage, raised again at WE7 |
+| WE9 Deployed checks against the mock providers | awaiting reproduction | WE1 to WE8, CE4 | `infra/test/write.spec.ts`: every WE9 row against the local mock providers, through the real handlers, an in-memory stream and FIFO queue; the `poison-` operation resolved locally; CI run needs a push |
 
 ## Decisions
 
@@ -138,7 +138,7 @@ Every phase now runs under the seven checks of Spec 00 §2.4 (`TESTING.md`). Run
 
 ## Open items for the author
 
-- Reproduce CE1 to CE5, RE1 to RE6 and WE1 to WE8 on a clean machine: `TESTING.md`, Running everything locally.
+- Reproduce CE1 to CE5, RE1 to RE6 and WE1 to WE9 on a clean machine: `TESTING.md`, Running everything locally.
 - Push, and see each CI job in `.github/workflows/tree-checks.yml` run (CE3 author gate).
 - Install Node.js 24.22.0 locally (CQ5).
 

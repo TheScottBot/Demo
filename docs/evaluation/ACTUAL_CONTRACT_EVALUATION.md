@@ -2054,3 +2054,75 @@ Done when: the synth suite passes. It does on the agent's machine; complete once
 
 - CE6: wire `WritePath` into `infra/lib/demo-platform.ts` in place of `StubWritePath`, with the mock provider connections, the alarm topic and `relayEnabled` false in `test` alone. CE6 also waits on Spec 01 EE3.
 - WE9: under WQ1, its local suite can join the real intake, relay, sweep, worker and status handlers through WE1's fake table and an in-memory FIFO queue, against the local mock providers.
+
+## WE9 Checks against the mock providers
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17, under WQ1 and CQ6. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Scope as built
+
+- `infra/test/write.spec.ts`, at the path Spec 03 names. It drives the real intake, relay, sweep, worker and status handlers, joined as WQ1 decided. The worker's real adapters call the three mock providers as local servers (`startLocalMockProviders`) over HTTP, and each result is read from the mock providers' own store, which is the double (Spec 00 §5.4).
+- `services/write/test/support/local-write-path.ts`, the harness, exported for the suite as `@demo/write/test-support/local-write-path`.
+  - The journal is WE1's fake table, now also recording what its stream would carry. The relay's filter (§5.1) is applied before each batch.
+  - The commands queue is an in-memory FIFO queue: one message at a time per group in send order, a group held while its head is invisible, a 120 second visibility on each receive, the worker's own visibility changes, deduplication within 5 minutes, and a move to the dead letter queue past the fifth receive.
+  - SQS promises no order across groups, so the harness delivers the most recently sent group head first. Any ordering the suite sees must rest on the message group alone.
+  - The clock is the suite's: it moves only when a test moves it, or when the queue has nothing visible until a later time. The backoff's jitter is set to none.
+- The fake journal table gained `takeStreamRecords`; its earlier users are unchanged and still pass.
+
+### Checks
+
+Every row of Spec 03's WE9 table:
+
+| Scenario | Record | Result |
+|---|---|---|
+| replace a section | normal | `SUCCEEDED`; the mock provider holds the new section |
+| append a note | normal | `SUCCEEDED`; the mock provider holds the note |
+| same key, same body, twice | normal | one operation; the second answer has `Idempotent-Replayed: true`; one provider call |
+| same key, different body | normal | 422 at intake |
+| stale base version | `conflict-` | `CONFLICT`, `attempts` 1 |
+| transient failures | `flaky-` | `SUCCEEDED`, `attempts` 3 |
+| throttled once | `throttle-` | `SUCCEEDED`; the second call at least 2 seconds after the first |
+| always failing | `poison-` | `DEAD_LETTERED`, `attempts` 5; the message in the dead letter queue |
+| relay disabled | normal, as in `test` | `ACCEPTED` until the sweep, then `SUCCEEDED`; `SweepRecovered` counted once; the absent relay logged |
+| ordering | five commands for one record | all `SUCCEEDED`, the provider called in submission order, the last title held |
+| another tenant polls | normal | 404 |
+
+The ordering row writes each command against the version the one before leaves, as the WE5 finding said it must; five sent against one version would end one applied and four in conflict.
+
+The `poison-` row goes on to the local stand in for the `dlq:resolve` author gate (WQ1, WE7). An operator inspects the dead letter, discards it, and the operation ends `FAILED` with `operator-discarded`, its attempts kept, and the dead letter gone.
+
+### Tests first
+
+The handlers existed before this suite, so, as for RE6, the plants are what show it bites. Each ran with only `write.spec.ts`:
+
+| Planted regression | Result |
+|---|---|
+| the worker sending `operationId` as the provider key (entry 11 undone) | 8 of 11 failed |
+| the relay enqueueing nothing | 8 failed |
+| one message group per operation, not per record | 1 failed: the ordering row, through the harness's cross group order |
+| a retry made visible at once, ignoring `Retry-After` | 1 failed |
+| dead lettered after 3 receives | 1 failed |
+| the status tenant unchecked | 1 failed |
+| discard leaving the dead letter | 1 failed |
+| the provider `Idempotency-Key` header not sent | 8 failed |
+| a replay refused rather than answered from the journal | 1 failed |
+| the sweep's grace period ten times too long | 1 failed |
+| attempts not counted | 4 failed |
+
+Each planted file was restored byte for byte.
+
+### What this does not cover
+
+Recorded under `IMPLEMENTATION_DEVIATIONS.md` entries 3 and 10: the queue and stream are the suite's model of SQS and DynamoDB Streams, not the services; Lambda's event source mappings, IAM, the network and real time are not exercised; and whether a visibility the worker sets survives Lambda handling the reported failure stays unobserved (WU16).
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 70 files, 1,289 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: under WQ1, the suite passes locally and in CI. It does on the agent's machine; complete once the author reproduces it, and CI is seen to run it after a push.
