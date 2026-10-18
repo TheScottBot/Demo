@@ -28,6 +28,8 @@ export interface DemoNodejsFunctionOptions {
   environment: Readonly<Record<string, string>>;
   memorySize: number;
   timeout: Duration;
+  // X-Ray active tracing, for a function that traces its own calls.
+  activeTracing?: boolean;
 }
 
 export function createDemoNodejsFunction(
@@ -48,6 +50,7 @@ export function createDemoNodejsFunction(
     architecture: lambda.Architecture.ARM_64,
     memorySize: options.memorySize,
     timeout: options.timeout,
+    ...(options.activeTracing === true ? { tracing: lambda.Tracing.ACTIVE } : {}),
     projectRoot: repositoryRoot,
     depsLockFilePath: lockFilePath,
     environment: {

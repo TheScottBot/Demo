@@ -1156,6 +1156,71 @@ Done when: the suite passes. It does on the agent's machine; complete once the a
 - The Lambda entry point: environment (`PROVIDER_TIMEOUT_MILLISECONDS`, `FAN_OUT_BUDGET_MILLISECONDS`, the provider variables), Secrets Manager reads, and Powertools behind `ReadPathLog` and `ReadPathMetrics`; the subsegment per provider call of §8.
 - A Spec 00 change: a runtime only subpath of `packages/construct-contracts` for `createPowertoolsProblemHandling`, so the read bundle does not pull in CDK.
 
+## RE5 ReadPath construct and read Lambda entry point
+
+Phase worked on 18 October 2026, after rereading datum Part 0 and 0.17. Automated criteria met on the agent's machine; awaiting the author's reproduction.
+
+### Sources read
+
+- The aws-cdk-lib 2.273.0 declarations for `lambda.Alias` (`provisionedConcurrentExecutions`), `lambda.Tracing`, `CfnFunction.reservedConcurrentExecutions`, `cloudwatch.MathExpression` and `Metric.createAlarm`: `createAlarm` is on `Metric` and `MathExpression`, not on `IMetric`, so the alarm helper takes those two.
+- The Powertools 2.36.0 tracer declarations for `isTracingEnabled`, `getSegment` and `addNewSubsegment`: outside Lambda, tracing is off and there is no segment.
+
+### Spec 00 changes
+
+- `packages/construct-contracts` gains a `./runtime` export, `src/runtime/index.ts`, holding `createPowertoolsProblemHandling` and nothing that imports CDK. `runtime-subpath.test.ts` bundles it with esbuild and asserts that no `aws-cdk-lib` or `constructs` input is bundled, and that Powertools is.
+- `createDemoNodejsFunction` gains `activeTracing`, which sets `Tracing.ACTIVE`; left unset, a function's tracing is unchanged.
+
+### Work completed
+
+- `read-path-configuration.ts`: the function's environment, read strictly at cold start: a known stage, whole millisecond budgets, and a fan-out budget longer than the provider timeout.
+- `read-path-observability.ts`: Powertools behind `ReadPathLog`, `ReadPathMetrics` and the CQ3 interfaces. Each §8 metric is a single metric with its own dimensions; `errorReason` appears only on an outcome that has one. `traceReadAdapters` opens a subsegment per provider call, annotated with `providerId` and `status` (`timeout` on an aborted call, `error` on any other rejection), closed either way, and passes the call straight through when there is no segment.
+- `read-handler-entry.ts`: the Lambda handler. It parses the configuration, reads the provider secrets from Secrets Manager, wraps the configured adapters for tracing, and gives `createReadHandler` the disabled cache policy (RD1).
+- `read-path-construct.ts`: `ReadPath`, implementing `ReadPathOutputs`.
+  - One function, `demo-<stage>-read`: 512 MB, 5 seconds, reserved concurrency 100, active tracing, no VPC.
+  - Reached through a `live` alias, with provisioned concurrency 2 in demo only (RU13).
+  - `secretsmanager:GetSecretValue` on the three provider secrets and nothing else.
+  - Synth fails without each routing table provider exactly once, and on any cache that is switched on (`read-cache-needs-approval-reference`, then `read-cache-not-built`, since RE7 is unscheduled).
+  - Six alarms to the alarm topic, missing data not breaching, over 5 minutes: a timeout rate above 10 per cent per provider, and any version mismatch, all sources unavailable or function error.
+- `read-bundle.test.ts` bundles the entry point and asserts it holds `read-handler.ts` and no CDK, `constructs`, msw or test double code.
+
+The construct is not yet wired into `infra`: that is CE6.
+
+### Tests first
+
+`read-path-configuration.test.ts`, `read-path-observability.test.ts` and `read-path-construct.test.ts` each failed with `Cannot find module` before their source existed.
+
+| Planted regression | Result |
+|---|---|
+| runtime subpath re-exports the CDK stubs | 2 tests failed |
+| reserved concurrency unset | 1 failed |
+| provisioned concurrency in every stage | 1 failed |
+| tracing off | 2 failed |
+| secret permission broadened with `ListSecrets` | 1 failed |
+| cache switched on without approval passes the first guard | 1 failed |
+| timeout rate threshold changed to 20 | 1 failed |
+| alarms not sent to the topic | 1 failed |
+| subsegment status not annotated | 1 failed |
+| `errorReason` dimension misnamed | 1 failed |
+| budget not checked against the provider timeout | 1 failed |
+
+Each planted file was restored byte for byte.
+
+### Reproduction report
+
+| Check | Result after a clean `npm ci` |
+|---|---|
+| Platform, Node.js | Windows 11 Home 10.0.26200, v22.23.2 |
+| The seven tree checks | all exit 0 |
+| Full suite | 45 files, 997 tests passed, at 100 and at 1,000 property runs |
+| `cdk synth` | all four stacks |
+| Tests skipped | none |
+
+Done when: the construct synthesises with the §7 settings and the §8 alarms, and the entry point bundles without CDK. Both hold on the agent's machine; complete once the author reproduces them.
+
+### For CE6
+
+- Wire `ReadPath` into `infra/lib/demo-platform.ts` in place of the read stub, with the mock provider connections and the alarm topic.
+
 # Spec 03 write path
 
 Plan stage not started.

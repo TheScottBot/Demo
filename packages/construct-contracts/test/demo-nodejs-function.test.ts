@@ -51,3 +51,39 @@ describe('createDemoNodejsFunction', () => {
     ).toThrow('node-options-reserved');
   });
 });
+
+// Added in Spec 02 RE5 as a Spec 00 change: active tracing, which the read
+// path's subsegment per provider call needs (Spec 02 §8).
+describe('createDemoNodejsFunction tracing', () => {
+  it('turns on active tracing when asked, and leaves it off otherwise', () => {
+    const stack = new Stack(new App(), 'TracingTest');
+    createDemoNodejsFunction(stack, 'Traced', {
+      stage: 'test',
+      component: 'traced-function',
+      entry: stubEntry,
+      environment: { DEMO_STAGE: 'test', DEMO_STUB_ROUTE: 'read-record' },
+      memorySize: 256,
+      timeout: Duration.seconds(3),
+      activeTracing: true,
+    });
+    createDemoNodejsFunction(stack, 'Untraced', {
+      stage: 'test',
+      component: 'untraced-function',
+      entry: stubEntry,
+      environment: { DEMO_STAGE: 'test', DEMO_STUB_ROUTE: 'read-record' },
+      memorySize: 256,
+      timeout: Duration.seconds(3),
+    });
+    const template = Template.fromStack(stack);
+    template.hasResourceProperties('AWS::Lambda::Function', {
+      FunctionName: 'demo-test-traced-function',
+      TracingConfig: { Mode: 'Active' },
+    });
+    const untraced = Object.values(template.findResources('AWS::Lambda::Function')).find(
+      (lambdaFunction) =>
+        (lambdaFunction as { Properties: { FunctionName: string } }).Properties.FunctionName ===
+        'demo-test-untraced-function',
+    ) as { Properties: Record<string, unknown> } | undefined;
+    expect(untraced?.Properties['TracingConfig']).toBeUndefined();
+  }, 60_000);
+});

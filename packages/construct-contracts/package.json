@@ -6,7 +6,8 @@
   "description": "Spec 00 construct contracts: the construct property interfaces, resource naming, and the stub constructs and stub functions.",
   "license": "MIT",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./runtime": "./src/runtime/index.ts"
   },
   "scripts": {
     "test": "vitest run --root ../.. packages/construct-contracts"
